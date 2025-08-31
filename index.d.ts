@@ -4,4 +4,29 @@ interface Token {
   symbol: string;
   price_usd: number;
   decimals: number;
+  icon: string;
 }
+
+enum TokenReputation {
+  Reputable,
+  NotFake,
+  Unknown, // Default
+  Spam
+}
+
+interface TokenMetadata {
+  name: string;
+  symbol: string;
+  decimals: number;
+  icon: string;
+}
+
+interface TokenInfo {
+  account_id: string;
+  price_usd: string;
+  main_pool: string;
+  metadata: TokenMetadata;
+  reputation: TokenReputation;
+}
+
+interface TokensApiResponse extends Array<TokenInfo>{}

@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { TokenSelectorModal } from "./token-selector-modal";
 import { LoadingSpinner } from "./loading-spinner";
+import Image from "next/image";
 
 // Mock data for token info
 const MOCK_TOKENS: Token[] = [
-  { id: "near", name: "NEAR Protocol", symbol: "NEAR", price_usd: 2.55, decimals: 18 },
-  { id: "bitcoin", name: "Bitcoin", symbol: "BTC", price_usd: 120000, decimals: 18 },
-  { id: "ethereum", name: "Ethereum", symbol: "ETH", price_usd: 4500.50, decimals: 18 },
-  { id: "usdc", name: "USDC", symbol: "USDC", price_usd: 1.0, decimals: 18 },
+  { id: "near", name: "NEAR Protocol", symbol: "NEAR", price_usd: 2.55, decimals: 18, icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiB2aWV3Qm94PSIwIDAgMTA4MCAxMDgwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiBmaWxsPSIjMDBFQzk3Ii8+CjxwYXRoIGQ9Ik03NzMuNDI1IDI0My4zOEM3NTEuNDUzIDI0My4zOCA3MzEuMDU0IDI1NC43NzIgNzE5LjU0NCAyNzMuNDk5TDU5NS41MzggNDU3LjYwNkM1OTEuNDk5IDQ2My42NzMgNTkzLjEzOCA0NzEuODU0IDU5OS4yMDYgNDc1Ljg5M0M2MDQuMTI0IDQ3OS4xNzIgNjEwLjYzMSA0NzguNzY2IDYxNS4xMSA0NzQuOTEzTDczNy4xNzIgMzY5LjA0MkM3MzkuMiAzNjcuMjE3IDc0Mi4zMjcgMzY3LjQwMyA3NDQuMTUyIDM2OS40MzFDNzQ0Ljk4IDM3MC4zNjEgNzQ1LjQyIDM3MS41NjEgNzQ1LjQyIDM3Mi43OTRWNzA0LjI2NUM3NDUuNDIgNzA3LjAwMyA3NDMuMjA2IDcwOS4yIDc0MC40NjggNzA5LjJDNzM4Ljk5NyA3MDkuMiA3MzcuNjExIDcwOC41NTggNzM2LjY4MiA3MDcuNDI1TDM2Ny43MDcgMjY1Ljc1OEMzNTUuNjkgMjUxLjU3NyAzMzguMDQ1IDI0My4zOTcgMzE5LjQ3IDI0My4zOEgzMDYuNTc1QzI3MS42NzMgMjQzLjM4IDI0My4zOCAyNzEuNjczIDI0My4zOCAzMDYuNTc1Vjc3My40MjVDMjQzLjM4IDgwOC4zMjcgMjcxLjY3MyA4MzYuNjIgMzA2LjU3NSA4MzYuNjJDMzI4LjU0NiA4MzYuNjIgMzQ4Ljk0NiA4MjUuMjI4IDM2MC40NTYgODA2LjUwMUw0ODQuNDYyIDYyMi4zOTRDNDg4LjUwMSA2MTYuMzI3IDQ4Ni44NjIgNjA4LjE0NiA0ODAuNzk0IDYwNC4xMDdDNDc1Ljg3NiA2MDAuODI4IDQ2OS4zNjkgNjAxLjIzNCA0NjQuODkgNjA1LjA4N0wzNDIuODI4IDcxMC45NThDMzQwLjggNzEyLjc4MyAzMzcuNjczIDcxMi41OTcgMzM1Ljg0OCA3MTAuNTY5QzMzNS4wMiA3MDkuNjM5IDMzNC41OCA3MDguNDM5IDMzNC41OTcgNzA3LjIwNlYzNzUuNjUxQzMzNC41OTcgMzcyLjkxMyAzMzYuODExIDM3MC43MTUgMzM5LjU0OSAzNzAuNzE1QzM0MS4wMDMgMzcwLjcxNSAzNDIuNDA2IDM3MS4zNTggMzQzLjMzNSAzNzIuNDlMNzEyLjI1OSA4MTQuMjQyQzcyNC4yNzYgODI4LjQyMyA3NDEuOTIxIDgzNi42MDMgNzYwLjQ5NiA4MzYuNjJINzczLjM5MkM4MDguMjkzIDgzNi42MzcgODM2LjYwMyA4MDguMzYxIDgzNi42MzcgNzczLjQ1OVYzMDYuNTc1QzgzNi42MzcgMjcxLjY3MyA4MDguMzQ0IDI0My4zOCA3NzMuNDQyIDI0My4zOEg3NzMuNDI1WiIgZmlsbD0iYmxhY2siLz4KPC9zdmc+" },
+  { id: "usdc", name: "USDC", symbol: "USDC", price_usd: 1.0, decimals: 18, icon: "data:image/svg+xml,%3C%3Fxml version=%221.0%22 encoding=%22utf-8%22%3F%3E%3C!-- Generator: Adobe Illustrator 22.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0) --%3E%3Csvg version=%221.1%22 id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 x=%220px%22 y=%220px%22 viewBox=%220 0 256 256%22 style=%22enable-background:new 0 0 256 256;%22 xml:space=%22preserve%22%3E%3Cstyle type=%22text/css%22%3E .st0%7Bfill:%232775CA;%7D .st1%7Bfill:%23FFFFFF;%7D%0A%3C/style%3E%3Ccircle class=%22st0%22 cx=%22128%22 cy=%22128%22 r=%22128%22/%3E%3Cpath class=%22st1%22 d=%22M104,217c0,3-2.4,4.7-5.2,3.8C60,208.4,32,172.2,32,129.3c0-42.8,28-79.1,66.8-91.5c2.9-0.9,5.2,0.8,5.2,3.8 v7.5c0,2-1.5,4.3-3.4,5C69.9,65.4,48,94.9,48,129.3c0,34.5,21.9,63.9,52.6,75.1c1.9,0.7,3.4,3,3.4,5V217z%22/%3E%3Cpath class=%22st1%22 d=%22M136,189.3c0,2.2-1.8,4-4,4h-8c-2.2,0-4-1.8-4-4v-12.6c-17.5-2.4-26-12.1-28.3-25.5c-0.4-2.3,1.4-4.3,3.7-4.3 h9.1c1.9,0,3.5,1.4,3.9,3.2c1.7,7.9,6.3,14,20.3,14c10.3,0,17.7-5.8,17.7-14.4c0-8.6-4.3-11.9-19.5-14.4c-22.4-3-33-9.8-33-27.3 c0-13.5,10.3-24.1,26.1-26.3V69.3c0-2.2,1.8-4,4-4h8c2.2,0,4,1.8,4,4v12.7c12.9,2.3,21.1,9.6,23.8,21.8c0.5,2.3-1.3,4.4-3.7,4.4 h-8.4c-1.8,0-3.3-1.2-3.8-2.9c-2.3-7.7-7.8-11.1-17.4-11.1c-10.6,0-16.1,5.1-16.1,12.3c0,7.6,3.1,11.4,19.4,13.7 c22,3,33.4,9.3,33.4,28c0,14.2-10.6,25.7-27.1,28.3V189.3z%22/%3E%3Cpath class=%22st1%22 d=%22M157.2,220.8c-2.9,0.9-5.2-0.8-5.2-3.8v-7.5c0-2.2,1.3-4.3,3.4-5c30.6-11.2,52.6-40.7,52.6-75.1 c0-34.5-21.9-63.9-52.6-75.1c-1.9-0.7-3.4-3-3.4-5v-7.5c0-3,2.4-4.7,5.2-3.8C196,50.2,224,86.5,224,129.3 C224,172.2,196,208.4,157.2,220.8z%22/%3E%3C/svg%3E%0A" },
+  { id: "bitcoin", name: "Bitcoin", symbol: "BTC", price_usd: 120000, decimals: 18, icon: "" },
+  { id: "ethereum", name: "Ethereum", symbol: "ETH", price_usd: 4500.50, decimals: 18, icon: "" },
 ];
 
 // Util function
@@ -131,7 +132,18 @@ export default function SwapPanel() {
               onClick={() => setShowFromDropdown(!showFromDropdown)}
               className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 rounded-lg px-4 py-2 mr-2 transition-colors border-slate-700 border-2 hover:border-slate-600"
             >
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-6 h-6" />
+              {/* Token icon or solid-color bg + letter if not found */}
+              {fromToken.icon && fromToken.icon.startsWith("data:image/") ?
+                <Image
+                  src={fromToken.icon}
+                  alt={fromToken.name}
+                  width={32}
+                  height={32}
+                  className="mx-3 rounded-full"
+                />
+              :
+                <div className="bg-orange-500 rounded-full w-[32px] h-[32px] mx-3 py-1 flex align-center justify-center">{fromToken.symbol.charAt(0)}</div>
+              }
               <span className="font-medium text-white">{fromToken.symbol}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -152,7 +164,7 @@ export default function SwapPanel() {
               value={fromAmount}
               onChange={handleFromAmountChange}
               placeholder="0.0"
-              className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none"
+              className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none py-2"
             />
           </div>
         </div>
@@ -185,7 +197,18 @@ export default function SwapPanel() {
               onClick={() => setShowToDropdown(!showToDropdown)}
               className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 rounded-lg px-4 py-2 mr-2 transition-colors border-slate-700 border-2 hover:border-slate-600"
             >
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-6 h-6" />
+              {/* Token icon or solid-color bg + letter if not found */}
+              {toToken.icon && toToken.icon.startsWith("data:image/") ?
+                <Image
+                  src={toToken.icon}
+                  alt={toToken.name}
+                  width={32}
+                  height={32}
+                  className="mx-3 rounded-full"
+                />
+              :
+                <div className="bg-orange-500 rounded-full w-[32px] h-[32px] mx-3 py-1 flex align-center justify-center">{toToken.symbol.charAt(0)}</div>
+              }
               <span className="font-medium text-white">{toToken.symbol}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -207,7 +230,7 @@ export default function SwapPanel() {
               value={toAmount}
               onChange={handleToAmountChange}
               placeholder="0.0"
-              className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none"
+              className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none py-2"
             />
           </div>
         </div>
