@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TokenSelectorModal } from "./token-selector-modal";
+import { LoadingSpinner } from "./loading-spinner";
 
 // Mock data for token info
 const MOCK_TOKENS: Token[] = [
@@ -233,6 +234,9 @@ export default function SwapPanel() {
             : ("bg-blue-500 hover:bg-blue-600 text-white")
         }`}
       >
+        {swapInProgress &&
+          <LoadingSpinner />
+        }
         {isConnected 
           ? (fromAmount ?
               (swapInProgress ? "Processing..." : "Swap")

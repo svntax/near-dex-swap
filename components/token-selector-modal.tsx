@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { XIcon } from "./x-icon";
 
 interface TokenSelectorModalProps {
   isOpen: boolean;
@@ -28,11 +29,20 @@ export const TokenSelectorModal = ({
       onClick={onClose}
     >
       <div 
-        className="bg-slate-800 rounded-lg w-full max-w-md max-h-[80vh] flex flex-col"
+        className="bg-slate-800 border-2 border-slate-700 rounded-lg w-full max-w-md max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-700">
-          <h2 className="text-white text-lg font-semibold mb-3">Select a token</h2>
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          <h2 className="text-white text-lg font-semibold">Select a token</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition-colors"
+            aria-label="Close"
+          >
+            <XIcon />
+          </button>
+        </div>
+        <div className="p-4">
           <input
             type="text"
             placeholder="Search token..."
