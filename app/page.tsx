@@ -1,3 +1,4 @@
+import SwapPanel from "@/components/swap-panel";
 import Image from "next/image";
 
 export default function Home() {
@@ -5,9 +6,7 @@ export default function Home() {
     <div className="font-sans grid grid-rows-[1fr_20px] items-center justify-items-center min-h-screen p-8 pb-16 gap-16 sm:p-16">
       <main className="w-full flex flex-col gap-[32px] items-center">
         <h1 className="w-full text-3xl text-center">NEAR Dex Swap</h1>
-        <div className="max-w-[512px] w-full min-h-[512px] bg-slate-900 rounded-lg p-8">
-          Panel container here
-        </div>
+        <SwapPanel />
       </main>
       <footer className="flex gap-[12px] flex-wrap items-center justify-center">
         <div>Made by (todo)</div>
