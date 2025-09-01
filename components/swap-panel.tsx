@@ -9,6 +9,57 @@ import { NearWalletSelector } from "./wallet-selector";
 import { Account } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
 
+interface NearTxAction {
+  FunctionCall: {
+    method_name: string;
+    args: string;
+    gas: number;
+    deposit: string;
+  };
+}
+
+interface NearTransaction {
+  receiver_id: string;
+  actions: NearTxAction[];
+  continue_if_failed: boolean;
+}
+
+interface NearIntentsQuote {
+  message_to_sign: string; // TODO: Is this correct?
+  quote_hash: string;  
+}
+
+type ExecutionInstruction = NearTransaction | NearIntentsQuote;
+
+interface DexRouteRequest {
+  token_in: string;               // "near" or a NEP-141 contract ID
+  token_out: string;              // "near" or a NEP-141 contract ID
+  amount_in?: string;
+  amount_out?: string;
+  max_wait_ms?: number;           // Up to 60000ms
+  slippage_type: "Auto" | "Fixed";
+  slippage?: number;              // Required if slippage_type is "Fixed"
+  max_slippage?: number;          // Required if slippage_type is "Auto"
+  min_slippage?: number;          // Required if slippage_type is "Auto"
+  dexes?: string[];               // List of DEX IDs (Rhea, Vheax, etc.)
+  trader_account_id?: string;     // Optional account ID for storage deposits
+  signing_public_key?: string;    // Optional public key for NEAR Intents signing
+}
+
+interface DexRouteResponse {
+  deadline: string | null;
+  has_slippage: boolean;
+  estimated_amount: {
+    amount_out: string;
+  };
+  worst_case_amount: {
+    amount_out: string;
+  };
+  dex_id: string;
+  execution_instructions: ExecutionInstruction[];
+  needs_unwrap: boolean;
+}
+
 // Mock data for token info
 const MOCK_TOKENS: Token[] = [
   { id: "near", name: "NEAR Protocol", symbol: "NEAR", price_usd: 2.55, decimals: 18, icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiB2aWV3Qm94PSIwIDAgMTA4MCAxMDgwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiBmaWxsPSIjMDBFQzk3Ii8+CjxwYXRoIGQ9Ik03NzMuNDI1IDI0My4zOEM3NTEuNDUzIDI0My4zOCA3MzEuMDU0IDI1NC43NzIgNzE5LjU0NCAyNzMuNDk5TDU5NS41MzggNDU3LjYwNkM1OTEuNDk5IDQ2My42NzMgNTkzLjEzOCA0NzEuODU0IDU5OS4yMDYgNDc1Ljg5M0M2MDQuMTI0IDQ3OS4xNzIgNjEwLjYzMSA0NzguNzY2IDYxNS4xMSA0NzQuOTEzTDczNy4xNzIgMzY5LjA0MkM3MzkuMiAzNjcuMjE3IDc0Mi4zMjcgMzY3LjQwMyA3NDQuMTUyIDM2OS40MzFDNzQ0Ljk4IDM3MC4zNjEgNzQ1LjQyIDM3MS41NjEgNzQ1LjQyIDM3Mi43OTRWNzA0LjI2NUM3NDUuNDIgNzA3LjAwMyA3NDMuMjA2IDcwOS4yIDc0MC40NjggNzA5LjJDNzM4Ljk5NyA3MDkuMiA3MzcuNjExIDcwOC41NTggNzM2LjY4MiA3MDcuNDI1TDM2Ny43MDcgMjY1Ljc1OEMzNTUuNjkgMjUxLjU3NyAzMzguMDQ1IDI0My4zOTcgMzE5LjQ3IDI0My4zOEgzMDYuNTc1QzI3MS42NzMgMjQzLjM4IDI0My4zOCAyNzEuNjczIDI0My4zOCAzMDYuNTc1Vjc3My40MjVDMjQzLjM4IDgwOC4zMjcgMjcxLjY3MyA4MzYuNjIgMzA2LjU3NSA4MzYuNjJDMzI4LjU0NiA4MzYuNjIgMzQ4Ljk0NiA4MjUuMjI4IDM2MC40NTYgODA2LjUwMUw0ODQuNDYyIDYyMi4zOTRDNDg4LjUwMSA2MTYuMzI3IDQ4Ni44NjIgNjA4LjE0NiA0ODAuNzk0IDYwNC4xMDdDNDc1Ljg3NiA2MDAuODI4IDQ2OS4zNjkgNjAxLjIzNCA0NjQuODkgNjA1LjA4N0wzNDIuODI4IDcxMC45NThDMzQwLjggNzEyLjc4MyAzMzcuNjczIDcxMi41OTcgMzM1Ljg0OCA3MTAuNTY5QzMzNS4wMiA3MDkuNjM5IDMzNC41OCA3MDguNDM5IDMzNC41OTcgNzA3LjIwNlYzNzUuNjUxQzMzNC41OTcgMzcyLjkxMyAzMzYuODExIDM3MC43MTUgMzM5LjU0OSAzNzAuNzE1QzM0MS4wMDMgMzcwLjcxNSAzNDIuNDA2IDM3MS4zNTggMzQzLjMzNSAzNzIuNDlMNzEyLjI1OSA4MTQuMjQyQzcyNC4yNzYgODI4LjQyMyA3NDEuOTIxIDgzNi42MDMgNzYwLjQ5NiA4MzYuNjJINzczLjM5MkM4MDguMjkzIDgzNi42MzcgODM2LjYwMyA4MDguMzYxIDgzNi42MzcgNzczLjQ1OVYzMDYuNTc1QzgzNi42MzcgMjcxLjY3MyA4MDguMzQ0IDI0My4zOCA3NzMuNDQyIDI0My4zOEg3NzMuNDI1WiIgZmlsbD0iYmxhY2siLz4KPC9zdmc+" },
@@ -17,10 +68,46 @@ const MOCK_TOKENS: Token[] = [
   { id: "ethereum", name: "Ethereum", symbol: "ETH", price_usd: 4500.50, decimals: 18, icon: "" },
 ];
 
-// Util function
+// Util functions
 const calculateExchangeRate = (tokenA: Token, tokenB: Token) => {
   if (tokenB.price_usd === 0) return 0;
   return tokenA.price_usd / tokenB.price_usd;
+};
+
+const convertToBaseUnit = (amount: string, token: Token): string => {
+  if (!amount || !token.decimals) return "0";
+  
+  try {
+    const cleanAmount = amount.replace(/,/g, "").trim();
+    if (!cleanAmount || isNaN(parseFloat(cleanAmount))) return "0";
+    
+    const [wholePart, decimalPart = ""] = cleanAmount.split(".");
+    const paddedDecimal = (decimalPart + "0".repeat(token.decimals)).substring(0, token.decimals);
+    const combined = wholePart + paddedDecimal;
+    const result = combined.replace(/^0+/, "") || "0";
+    
+    return result;
+  } catch (error) {
+    console.error("Error converting amount:", error);
+    return "0";
+  }
+};
+
+const convertToDisplayUnit = (baseAmount: string, token: Token): string => {
+  if (!baseAmount || !token.decimals) return "0";
+  
+  try {
+    const amountBigInt = BigInt(baseAmount);
+    const divisor = BigInt(Math.pow(10, token.decimals));
+    
+    const wholePart = amountBigInt / divisor;
+    const fractionalPart = amountBigInt % divisor;
+    const fractionalStr = fractionalPart.toString().padStart(token.decimals, "0");
+    return `${wholePart.toString()}.${fractionalStr}`;
+  } catch (error) {
+    console.error("Error converting display amount:", error);
+    return "0";
+  }
 };
 
 export default function SwapPanel() {
@@ -36,6 +123,9 @@ export default function SwapPanel() {
   const [showToDropdown, setShowToDropdown] = useState<boolean>(false);
   const [searchFrom, setSearchFrom] = useState<string>("");
   const [searchTo, setSearchTo] = useState<string>("");
+  const [slippage, setSlippage] = useState<number>(1);
+  const [routeInfo, setRouteInfo] = useState<DexRouteResponse>();
+  const [loadingRouteInfo, setLoadingRouteInfo] = useState<boolean>(false);
   const [swapInProgress, setSwapInProgress] = useState<boolean>(false);
 
   useEffect(() => {
@@ -46,6 +136,12 @@ export default function SwapPanel() {
       });
     });
   }, []);
+
+  useEffect(() => {
+    if (fromToken && toToken) {
+      getDexRoute(); // Is this inefficient? Should avoid spamming on every amount change?
+    }
+  }, [fromToken, toToken, fromAmount, toAmount])
 
   const handleSignOut = () => {
     console.log("User signed out!");
@@ -99,6 +195,7 @@ export default function SwapPanel() {
         const rate = calculateExchangeRate(fromToken, toToken);
         const calculatedAmount = Number(value) * rate;
         setToAmount(Number(calculatedAmount).toFixed(6));
+        getDexRoute();
       }
     }
   };
@@ -111,7 +208,15 @@ export default function SwapPanel() {
         const rate = calculateExchangeRate(toToken, fromToken);
         const calculatedAmount = Number(value) * rate;
         setFromAmount(Number(calculatedAmount).toFixed(6));
+        getDexRoute();
       }
+    }
+  };
+
+  const handleSlippageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value && !isNaN(Number(value))) {
+      setSlippage(Number(value));
     }
   };
 
@@ -124,6 +229,8 @@ export default function SwapPanel() {
     const tempAmount = fromAmount;
     setFromAmount(toAmount);
     setToAmount(tempAmount);
+
+    getDexRoute();
   };
 
   const handleSwap = () => {
@@ -139,6 +246,48 @@ export default function SwapPanel() {
       alert(`Swapped ${fromAmount} ${fromToken.symbol} to ${toAmount} ${toToken.symbol}`);
       setSwapInProgress(false);
     }, 2000);
+  };
+
+  const getDexRoute = async () => {
+    setLoadingRouteInfo(true);
+    if (!fromAmount || !toAmount || !fromToken.id || !toToken.id) {
+      console.error("Missing required parameters for routing");
+      setLoadingRouteInfo(false);
+      setRouteInfo(undefined);
+      return;
+    }
+  
+    try {
+      const amountIn = convertToBaseUnit(fromAmount, fromToken);
+      const response = await fetch(
+        `https://router.intear.tech/route?` + 
+        `token_in=${fromToken.id}&` +
+        `token_out=${toToken.id}&` +
+        `amount_in=${amountIn}&` +
+        `max_wait_ms=1500&` +
+        `slippage_type=Fixed&` +
+        `slippage=${slippage/100}` +
+        ((account && account.accountId) ? `&trader_account_id=${account.accountId}` : "")
+        // TODO: signing_public_key for NEAR Intents
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const routeData: DexRouteResponse[] = await response.json();
+      if (!fromAmount || !toAmount || Number(fromAmount || "0") <= 0 || Number(toAmount || "0") <= 0) {
+        setRouteInfo(undefined);
+      }
+      else {
+        setRouteInfo(routeData[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching DEX route:", error);
+      setRouteInfo(undefined);
+    } finally {
+      setLoadingRouteInfo(false);
+    }
   };
 
   return (
@@ -274,6 +423,50 @@ export default function SwapPanel() {
         </div>
       </div>
 
+      {/* Swap Info Section */}
+      <div className="bg-slate-800 rounded-lg p-4 my-4">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-white text-lg font-medium">{loadingRouteInfo ? <><LoadingSpinner /> {"Fetching best route..."}</> : "Route Info"}</h2>
+          <button
+            onClick={() => getDexRoute()}
+            className="bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
+          >
+            Refresh
+          </button>
+        </div>
+        
+        {loadingRouteInfo ? <p className="text-slate-300 text-sm">Loading...</p> : 
+          routeInfo ? (
+            <>
+              <div className="text-slate-300 text-sm mb-2">
+                <span className="text-slate-400">DEX:</span> {routeInfo.dex_id || "N/A"}
+              </div>
+              <div className="text-slate-300 text-sm mb-2">
+                <span className="text-slate-400">Minimum Received:</span> {convertToDisplayUnit(routeInfo.worst_case_amount.amount_out || "0", toToken)} {toToken.symbol}
+              </div>
+            </>
+          ) : (
+            <div className="text-slate-400 text-sm py-2">No routes found</div>
+          )
+        }
+        
+        <div className="mt-3">
+          <div className="text-slate-300 text-sm mb-1">Slippage</div>
+          <div className="flex items-center">
+            <input 
+              type="number" 
+              min="0" 
+              max="100" 
+              step="0.1" 
+              value={slippage} 
+              onChange={handleSlippageChange}
+              className="bg-slate-700 text-white rounded px-2 py-1 w-20 border border-slate-600"
+            />
+            <span className="text-slate-300 ml-2">%</span>
+          </div>
+        </div>
+      </div>
+
       {/* Swap Button */}
       <button
         onClick={() => {
@@ -284,21 +477,21 @@ export default function SwapPanel() {
             handleConnectWallet();
           }
         }}
-        disabled={swapInProgress || (isConnected && !fromAmount)}
+        disabled={(swapInProgress || loadingRouteInfo) || (isConnected && !fromAmount)}
         className={`w-full mt-6 py-3 rounded-lg font-medium transition-colors ${
           isConnected 
-            ? (!swapInProgress && fromAmount ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-blue-900 text-slate-500")
-            : ("bg-blue-500 hover:bg-blue-600 text-white")
+            ? (!(swapInProgress || loadingRouteInfo) && fromAmount ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-blue-900 text-slate-500")
+            : loadingRouteInfo ? "bg-blue-900 text-slate-500" : "bg-blue-500 hover:bg-blue-600 text-white"
         }`}
       >
-        {swapInProgress &&
+        {(swapInProgress || loadingRouteInfo) &&
           <LoadingSpinner />
         }
         {isConnected 
           ? (fromAmount ?
-              (swapInProgress ? "Processing..." : "Swap")
+              ((swapInProgress || loadingRouteInfo) ? "Processing..." : "Swap")
             : "Enter an amount") 
-          : "Connect Wallet"}
+          : (loadingRouteInfo ? "Processing..." : "Connect Wallet")}
       </button>
     </div>
   );
