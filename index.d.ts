@@ -30,3 +30,8 @@ interface TokenInfo {
 }
 
 interface TokensApiResponse extends Array<TokenInfo>{}
+
+interface NearAccount {
+  id: string;
+  network: "testnet" | "mainnet";
+}

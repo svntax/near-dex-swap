@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TokenSelectorModal } from "./token-selector-modal";
 import { LoadingSpinner } from "./loading-spinner";
+import { NearWallet } from "@hot-labs/near-connect";
 import Image from "next/image";
+import { NearWalletSelector } from "./wallet-selector";
+import { Account } from "@hot-labs/near-connect/build/types/wallet";
+import { nearConnector } from "@/lib/wallets/selectors";
 
 // Mock data for token info
 const MOCK_TOKENS: Token[] = [
@@ -20,6 +24,10 @@ const calculateExchangeRate = (tokenA: Token, tokenB: Token) => {
 };
 
 export default function SwapPanel() {
+  const [account, setAccount] = useState<Account>();
+  const [wallet, setWallet] = useState<NearWallet | undefined>();
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+
   const [fromToken, setFromToken] = useState<Token>(MOCK_TOKENS[0]);
   const [toToken, setToToken] = useState<Token>(MOCK_TOKENS[1]);
   const [fromAmount, setFromAmount] = useState<string>("");
@@ -28,8 +36,34 @@ export default function SwapPanel() {
   const [showToDropdown, setShowToDropdown] = useState<boolean>(false);
   const [searchFrom, setSearchFrom] = useState<string>("");
   const [searchTo, setSearchTo] = useState<string>("");
-  const [isConnected, setIsConnected] = useState<boolean>(false);
   const [swapInProgress, setSwapInProgress] = useState<boolean>(false);
+
+  useEffect(() => {
+    nearConnector.wallet().then((wallet) => {
+      wallet.getAccounts().then((t: Account[]) => {
+        setAccount(t[0]);
+        setWallet(wallet);
+      });
+    });
+  }, []);
+
+  const handleSignOut = () => {
+    console.log("User signed out!");
+    setIsConnected(false);
+    setAccount(undefined);
+    setWallet(undefined);
+  };
+
+  const handleSignIn = (_network: "testnet" | "mainnet", account: Account, success: boolean) => {
+    console.log("Signed in as " + account.accountId);
+    setIsConnected(true);
+    setAccount(account);
+    nearConnector.wallet().then(userWallet => setWallet(userWallet));
+  };
+
+  const handleConnectWallet = async () => {
+    await nearConnector.connect();
+  };
 
   const filteredFromTokens = MOCK_TOKENS.filter(token => 
     token.name.toLowerCase().includes(searchFrom.toLowerCase()) ||
@@ -109,14 +143,12 @@ export default function SwapPanel() {
 
   return (
     <div className="max-w-[512px] w-full min-h-[512px] bg-slate-900 rounded-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-white">Swap</h2>
-        <button 
-          onClick={() => setIsConnected(!isConnected)}
-          className="text-sm text-blue-400 hover:text-blue-300"
-        >
-          {isConnected ? "Disconnect Wallet" : "Connect Wallet"}
-        </button>
+      <div className={"flex justify-between mb-6 items-center"}>
+        <h2 className="text-xl font-bold text-white py-2">Swap</h2>
+        <div className="text-right">
+          <NearWalletSelector className="text-sm text-blue-400 hover:text-blue-300" signInCallback={handleSignIn} signOutCallback={handleSignOut}/>
+          {account && <span className="block text-white text-sm mb-1">{account.accountId}</span>}
+        </div>
       </div>
 
       {/* From Section */}
@@ -156,6 +188,7 @@ export default function SwapPanel() {
               onClose={() => setShowFromDropdown(false)}
               tokens={filteredFromTokens}
               onSelectToken={handleFromTokenSelect}
+              userAccount={account?.accountId}
             />
           </div>
           <div className="relative flex-1">
@@ -221,6 +254,7 @@ export default function SwapPanel() {
               onClose={() => setShowToDropdown(false)}
               tokens={filteredToTokens}
               onSelectToken={handleToTokenSelect}
+              userAccount={account?.accountId}
             />
           </div>
 
@@ -247,7 +281,7 @@ export default function SwapPanel() {
             handleSwap();
           }
           else {
-            setIsConnected(true);
+            handleConnectWallet();
           }
         }}
         disabled={swapInProgress || (isConnected && !fromAmount)}

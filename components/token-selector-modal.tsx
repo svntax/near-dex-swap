@@ -7,19 +7,20 @@ interface TokenSelectorModalProps {
   onClose: () => void;
   tokens: Token[];
   onSelectToken: (token: Token) => void;
+  userAccount: string | undefined;
 }
 
 export const TokenSelectorModal = ({ 
   isOpen, 
   onClose,
-  onSelectToken 
+  onSelectToken,
+  userAccount
 }: TokenSelectorModalProps) => {
   const [search, setSearch] = useState<string>("");
   const [tokens, setTokens] = useState<Token[]>([]);
 
   useEffect(() => {
     // Fetch tokens from API
-    const userAccount = "slimedragon.near"; // TODO: get user account
     // TODO: Hard-code NEAR native token? Token search API doesn't seem to return it
     const tokensEndpoint = `https://prices.intear.tech/token-search?q=${search}&n=50&rep=Unknown${userAccount ? "&acc=" + userAccount : ""}`;
     const fetchTokens = async () => {
@@ -69,7 +70,6 @@ export const TokenSelectorModal = ({
   return (
     <div 
       className="fixed inset-0 bg-opacity-25 backdrop-blur-lg z-50 flex items-center justify-center p-4"
-      onClick={onClose}
     >
       <div 
         className="bg-slate-800 border-2 border-slate-700 rounded-lg w-full max-w-md max-h-[80vh] flex flex-col"
@@ -79,7 +79,7 @@ export const TokenSelectorModal = ({
           <h2 className="text-white text-lg font-semibold">Select a token</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-white transition-colors cursor-pointer"
             aria-label="Close"
           >
             <XIcon />
