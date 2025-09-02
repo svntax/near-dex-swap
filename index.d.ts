@@ -41,3 +41,27 @@ interface NearAccount {
   id: string;
   network: "testnet" | "mainnet";
 }
+
+interface GetBalanceResponse {
+  id: string;
+  jsonrpc: string;
+  result: {
+    block_hash: string;
+    block_height: number;
+    result: number[];
+  }
+}
+
+// Because function calls from Intear DEX Aggregator are a slightly different format than FunctionCallAction
+interface NearTxActionIntear {
+  FunctionCall: {
+    method_name: string;
+    args: object;
+    gas: string;
+    deposit: string;
+  };
+}
+interface NearTransactionIntear {
+  receiver_id: string;
+  actions: NearTxActionIntear[];
+}

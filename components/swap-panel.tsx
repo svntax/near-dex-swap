@@ -6,32 +6,21 @@ import { LoadingSpinner } from "./loading-spinner";
 import { NearWallet } from "@hot-labs/near-connect";
 import Image from "next/image";
 import { NearWalletSelector } from "./wallet-selector";
-import { Account } from "@hot-labs/near-connect/build/types/wallet";
+import { Account, Optional } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
-import { getUserTokens } from "@/lib/wallets/wallet-methods";
-import { calculateExchangeRate, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
-
-interface NearTxAction {
-  FunctionCall: {
-    method_name: string;
-    args: string;
-    gas: number;
-    deposit: string;
-  };
-}
-
-interface NearTransaction {
-  receiver_id: string;
-  actions: NearTxAction[];
-  continue_if_failed: boolean;
-}
+import { byteArrayToUtf8String, getUserTokens, getBalance } from "@/lib/wallets/wallet-methods";
+import { calculateExchangeRate, createTransactionFromIntearTransaction, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
+import { Transaction } from "@hot-labs/near-connect/build/types/transactions";
 
 interface NearIntentsQuote {
   message_to_sign: string; // TODO: Is this correct?
   quote_hash: string;  
 }
 
-type ExecutionInstruction = NearTransaction | NearIntentsQuote;
+interface ExecutionInstruction {
+  NearTransaction?: NearTransactionIntear;
+  IntentsQuote?: NearIntentsQuote;
+}
 
 interface DexRouteRequest {
   token_in: string;               // "near" or a NEP-141 contract ID
@@ -111,6 +100,7 @@ export default function SwapPanel() {
       wallet.getAccounts().then(async (t: Account[]) => {
         setAccount(t[0]);
         setWallet(wallet);
+        setIsConnected(true);
         getUserTokens(t[0].accountId).then((tokensOwned: UserTokenInfo[]) => {
           setUserTokens(tokensOwned);
           updateUserTokenBalancesDisplay(fromToken, toToken);
@@ -184,16 +174,6 @@ export default function SwapPanel() {
     }
   };
 
-  const filteredFromTokens = INITIAL_TOKENS.filter(token => 
-    token.name.toLowerCase().includes(searchFrom.toLowerCase()) ||
-    token.symbol.toLowerCase().includes(searchFrom.toLowerCase())
-  );
-
-  const filteredToTokens = INITIAL_TOKENS.filter(token => 
-    token.name.toLowerCase().includes(searchTo.toLowerCase()) ||
-    token.symbol.toLowerCase().includes(searchTo.toLowerCase())
-  );
-
   const handleFromTokenSelect = (token: Token) => {
     setFromToken(token);
     setShowFromDropdown(false);
@@ -254,19 +234,77 @@ export default function SwapPanel() {
     setToAmount(tempAmount);
   };
 
-  const handleSwap = () => {
-    if (!isConnected) {
-      setIsConnected(true);
-      return;
-    }
-    
-    setSwapInProgress(true);
+  const handleSwap = async () => {
+    try {
+      if (!isConnected || !account) {
+        console.error("Error during swap: user is not connected");
+        return;
+      }
+      if (!wallet) {
+        console.error("Error during swap: user wallet not found");
+        return;
+      }
+      if (!routeInfo) {
+        console.error("Error during swap: DEX route info not found");
+        return;
+      }
+      
+      setSwapInProgress(true);
 
-    // Mock API request with timeout
-    setTimeout(() => {
-      alert(`Swapped ${fromAmount} ${fromToken.symbol} to ${toAmount} ${toToken.symbol}`);
+      let wNearBalanceBeforeSwap = BigInt(0);
+      if (routeInfo.needs_unwrap) {
+        // Get user's wNEAR balance
+        const balanceResponse = await getBalance(account.accountId, "wrap.near");
+        const balanceString = byteArrayToUtf8String(balanceResponse.result.result);
+        const wNearBalance = BigInt(balanceString);
+        console.log("wNEAR balance before swap:", wNearBalance);
+        wNearBalanceBeforeSwap = wNearBalance;
+      }
+
+      const transactions: ExecutionInstruction[] = routeInfo.execution_instructions;
+      const transactionsToSignAndSend: Array<Optional<Transaction, "signerId">> = [];
+      transactions.forEach((transaction: ExecutionInstruction) => {
+        if (transaction.IntentsQuote && !transaction.NearTransaction) {
+          // TODO: near intents support
+        }
+        else if (transaction.NearTransaction && !transaction.IntentsQuote) {
+          // Construct the function call transaction from Intear's FunctionCall format
+          const formattedTx: Transaction = createTransactionFromIntearTransaction(transaction.NearTransaction, account.accountId, transaction.NearTransaction.receiver_id);
+          transactionsToSignAndSend.push(formattedTx);
+        }
+      });
+
+      await wallet.signAndSendTransactions({
+        transactions: transactionsToSignAndSend
+      });
+
+      // Execute near_withdraw on wrap.near if needs_unwrap is true
+      if (routeInfo.needs_unwrap) {
+        const balanceResponse = await getBalance(account.accountId, "wrap.near");
+        const balanceString = byteArrayToUtf8String(balanceResponse.result.result);
+        const wNearBalance = BigInt(balanceString);
+        console.log("wNEAR balance after swap:", wNearBalance);
+        const difference = wNearBalance - wNearBalanceBeforeSwap;
+        console.log(`Prompting user to unwrap ${difference} wNEAR`);
+        await wallet.signAndSendTransaction({
+          signerId: account.accountId,
+          receiverId: "wrap.near",
+          actions: [{
+            type: "FunctionCall",
+            params: {
+                methodName: "near_withdraw",
+                args: {"amount": difference.toString()},
+                gas: "10000000000000", // 10 TGas
+                deposit: "0"
+            }
+          }]
+        });
+      }
+    } catch (error) {
+      console.error("Error occurred during swap:", error);
+    } finally {
       setSwapInProgress(false);
-    }, 2000);
+    }
   };
 
   const getDexRoute = async (newFromToken: Token, newToToken: Token) => {

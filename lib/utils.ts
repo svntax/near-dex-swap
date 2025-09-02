@@ -1,3 +1,5 @@
+import { FunctionCallAction, Transaction } from "@hot-labs/near-connect/build/types/transactions";
+
 // Util functions
 export const calculateExchangeRate = (tokenA: Token, tokenB: Token) => {
   if (tokenB.price_usd === 0) return 0;
@@ -39,3 +41,21 @@ export const convertToDisplayUnit = (baseAmount: string, token: Token): string =
     return "0";
   }
 };
+
+export const createTransactionFromIntearTransaction = (tx: NearTransactionIntear, signerId: string, receiverId: string): Transaction => {
+  const actions: FunctionCallAction[] = [];
+  tx.actions.forEach((action) => actions.push({
+    type: "FunctionCall",
+    params: {
+      methodName: action.FunctionCall.method_name,
+      args: action.FunctionCall.args,
+      gas: action.FunctionCall.gas,
+      deposit: action.FunctionCall.deposit
+    }
+  }));
+  return {
+    signerId: signerId,
+    receiverId: receiverId,
+    actions: actions
+  }
+}
