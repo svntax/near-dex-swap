@@ -135,7 +135,9 @@ export const TokenSelectorModal = ({
                 
                 <div>
                   <div className="font-medium text-white">{token.symbol}</div>
-                  <div className="text-xs text-slate-400">{token.name}</div>
+                  <div className="text-xs text-slate-300">{token.name}</div>
+                  {token.id !== "near" && <div className="text-xs text-slate-400">{token.id}</div>}
+                  
                 </div>
               </button>
             ))
