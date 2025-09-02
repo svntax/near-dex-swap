@@ -31,6 +31,12 @@ interface TokenInfo {
 
 interface TokensApiResponse extends Array<TokenInfo>{}
 
+interface UserTokensApiResponse extends Array<UserTokenInfo>{}
+interface UserTokenInfo {
+  balance: number;
+  token: TokenInfo;
+}
+
 interface NearAccount {
   id: string;
   network: "testnet" | "mainnet";

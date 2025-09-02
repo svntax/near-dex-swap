@@ -8,6 +8,7 @@ import Image from "next/image";
 import { NearWalletSelector } from "./wallet-selector";
 import { Account } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
+import { getUserTokens } from "@/lib/wallets/wallet-methods";
 
 interface NearTxAction {
   FunctionCall: {
@@ -114,11 +115,14 @@ export default function SwapPanel() {
   const [account, setAccount] = useState<Account>();
   const [wallet, setWallet] = useState<NearWallet | undefined>();
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [userTokens, setUserTokens] = useState<UserTokenInfo[]>();
 
   const [fromToken, setFromToken] = useState<Token>(MOCK_TOKENS[0]);
   const [toToken, setToToken] = useState<Token>(MOCK_TOKENS[1]);
   const [fromAmount, setFromAmount] = useState<string>("");
   const [toAmount, setToAmount] = useState<string>("");
+  const [fromTokenBalance, setFromTokenBalance] = useState<number>(0);
+  const [toTokenBalance, setToTokenBalance] = useState<number>(0);
   const [showFromDropdown, setShowFromDropdown] = useState<boolean>(false);
   const [showToDropdown, setShowToDropdown] = useState<boolean>(false);
   const [searchFrom, setSearchFrom] = useState<string>("");
@@ -130,9 +134,15 @@ export default function SwapPanel() {
 
   useEffect(() => {
     nearConnector.wallet().then((wallet) => {
-      wallet.getAccounts().then((t: Account[]) => {
+      wallet.getAccounts().then(async (t: Account[]) => {
         setAccount(t[0]);
         setWallet(wallet);
+        getUserTokens(t[0].accountId).then((tokensOwned: UserTokenInfo[]) => {
+          setUserTokens(tokensOwned);
+          updateUserTokenBalancesDisplay(fromToken, toToken);
+        }).catch (error => {
+          console.error("Error fetching user tokens:", error);
+        });
       });
     });
   }, []);
@@ -148,17 +158,56 @@ export default function SwapPanel() {
     setIsConnected(false);
     setAccount(undefined);
     setWallet(undefined);
+    setUserTokens(undefined);
+    setFromTokenBalance(0);
+    setToTokenBalance(0);
   };
 
   const handleSignIn = (_network: "testnet" | "mainnet", account: Account, success: boolean) => {
     console.log("Signed in as " + account.accountId);
     setIsConnected(true);
     setAccount(account);
-    nearConnector.wallet().then(userWallet => setWallet(userWallet));
+    nearConnector.wallet().then(userWallet => {
+      setWallet(userWallet);
+      getUserTokens(account.accountId).then((tokensOwned: UserTokenInfo[]) => {
+        setUserTokens(tokensOwned);
+        updateUserTokenBalancesDisplay(fromToken, toToken);
+      }).catch (error => {
+        console.error("Error fetching user tokens:", error);
+      });
+    });
   };
 
   const handleConnectWallet = async () => {
     await nearConnector.connect();
+  };
+
+  const updateUserTokenBalancesDisplay = (newFromToken: Token, newToToken: Token) => {
+    if(!userTokens) return;
+    if (newFromToken) {
+      const tokenOwned = userTokens.find((t: UserTokenInfo) => {
+        return t.token.account_id === newFromToken.id;
+      });
+      if (tokenOwned) {
+        const amountForDisplay = convertToDisplayUnit(tokenOwned.balance.toString(), newFromToken);
+        setFromTokenBalance(Number(amountForDisplay));
+      }
+      else {
+        setFromTokenBalance(0);
+      }
+    }
+    if (newToToken) {
+      const tokenOwned = userTokens.find((t: UserTokenInfo) => {
+        return t.token.account_id === newToToken.id;
+      });
+      if (tokenOwned) {
+        const amountForDisplay = convertToDisplayUnit(tokenOwned.balance.toString(), newToToken);
+        setToTokenBalance(Number(amountForDisplay));
+      }
+      else {
+        setToTokenBalance(0);
+      }
+    }
   };
 
   const filteredFromTokens = MOCK_TOKENS.filter(token => 
@@ -177,6 +226,7 @@ export default function SwapPanel() {
     setSearchFrom("");
     setFromAmount("");
     setToAmount("");
+    updateUserTokenBalancesDisplay(token, toToken);
   };
 
   const handleToTokenSelect = (token: Token) => {
@@ -185,6 +235,7 @@ export default function SwapPanel() {
     setSearchTo("");
     setFromAmount("");
     setToAmount("");
+    updateUserTokenBalancesDisplay(fromToken, token);
   };
 
   const handleFromAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,6 +281,7 @@ export default function SwapPanel() {
     setFromAmount(toAmount);
     setToAmount(tempAmount);
 
+    updateUserTokenBalancesDisplay(toToken, fromToken);
     getDexRoute();
   };
 
@@ -304,7 +356,7 @@ export default function SwapPanel() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>From</span>
-          <span>Balance: {0} {fromToken.symbol}</span>
+          <span>Balance: {fromTokenBalance} {fromToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
@@ -370,7 +422,7 @@ export default function SwapPanel() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>To</span>
-          <span>Balance: {0} {toToken.symbol}</span>
+          <span>Balance: {toTokenBalance} {toToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
