@@ -76,6 +76,8 @@ export default function SwapPanel() {
   const [routeInfo, setRouteInfo] = useState<DexRouteResponse>();
   const [loadingRouteInfo, setLoadingRouteInfo] = useState<boolean>(false);
   const [swapInProgress, setSwapInProgress] = useState<boolean>(false);
+  const [swapSuccess, setSwapSuccess] = useState<boolean>(false);
+  const [swapFailVisible, setSwapFailVisible] = useState<boolean>(false);
 
   useEffect(() => {
     // Get the price of native NEAR here using wNEAR
@@ -130,6 +132,8 @@ export default function SwapPanel() {
     setNearBalance("");
     setFromTokenBalance(0);
     setToTokenBalance(0);
+    setSwapFailVisible(false);
+    setSwapSuccess(false);
   };
 
   const handleSignIn = (_network: "testnet" | "mainnet", account: Account, success: boolean) => {
@@ -324,6 +328,9 @@ export default function SwapPanel() {
           }]
         });
 
+        setSwapFailVisible(false);
+        setSwapSuccess(true);
+
         // Update balances data
         viewAccount(account.accountId).then((response: ViewAccountResponse) => {
           setNearBalance(response.result.amount);
@@ -334,6 +341,7 @@ export default function SwapPanel() {
       }
     } catch (error) {
       console.error("Error occurred during swap:", error);
+      setSwapFailVisible(true);
     } finally {
       setSwapInProgress(false);
     }
@@ -390,6 +398,20 @@ export default function SwapPanel() {
           {account && <span className="block text-white text-sm mb-1">{account.accountId}</span>}
         </div>
       </div>
+
+      {/* Swap confirmation section */}
+      {swapSuccess ? (
+        <div className="mb-6 p-4 bg-green-900 border border-green-600 rounded-lg text-white">
+          <h3 className="text-md font-semibold">Swap submitted!</h3>
+          <p className="mt-2 text-sm">
+            <span>{parseFloat(Number(fromAmount).toFixed(6))} {fromToken.symbol}</span> for <span>{parseFloat(Number(toAmount).toFixed(6))} {toToken.symbol}</span>.
+          </p>
+        </div>
+      ) : (swapFailVisible && (
+        <div className="mb-6 p-4 bg-red-950 border border-red-700 rounded-lg text-white">
+          <h3 className="text-md font-semibold">Swap failed!</h3>
+        </div>
+      ))}
 
       {/* From Section */}
       <div className="bg-slate-800 rounded-lg p-4">
