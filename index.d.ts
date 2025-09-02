@@ -69,7 +69,7 @@ interface ViewAccountResponse {
 interface NearTxActionIntear {
   FunctionCall: {
     method_name: string;
-    args: object;
+    args: string; //base64-encoded args
     gas: string;
     deposit: string;
   };

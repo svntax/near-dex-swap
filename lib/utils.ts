@@ -48,7 +48,7 @@ export const createTransactionFromIntearTransaction = (tx: NearTransactionIntear
     type: "FunctionCall",
     params: {
       methodName: action.FunctionCall.method_name,
-      args: action.FunctionCall.args,
+      args: Buffer.from(action.FunctionCall.args, "base64"),
       gas: action.FunctionCall.gas,
       deposit: action.FunctionCall.deposit
     }
