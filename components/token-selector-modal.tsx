@@ -5,23 +5,23 @@ import Image from "next/image";
 interface TokenSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tokens: Token[];
+  initialTokensList: Token[];
   onSelectToken: (token: Token) => void;
   userAccount: string | undefined;
 }
 
 export const TokenSelectorModal = ({ 
-  isOpen, 
+  isOpen,
   onClose,
   onSelectToken,
-  userAccount
+  userAccount,
+  initialTokensList
 }: TokenSelectorModalProps) => {
   const [search, setSearch] = useState<string>("");
   const [tokens, setTokens] = useState<Token[]>([]);
 
   useEffect(() => {
     // Fetch tokens from API
-    // TODO: Hard-code NEAR native token? Token search API doesn't seem to return it
     const tokensEndpoint = `https://prices.intear.tech/token-search?q=${search}&n=50&rep=Unknown${userAccount ? "&acc=" + userAccount : ""}`;
     const fetchTokens = async () => {
       try {
@@ -40,8 +40,22 @@ export const TokenSelectorModal = ({
           decimals: tokenInfo.metadata.decimals,
           icon: tokenInfo.metadata.icon
         }));
+
+        // Now get the price for native NEAR
+        // Since wNEAR is 1:1, just use it for the price data
+        const priceResponse = await fetch("https://prices.intear.tech/price?token_id=wrap.near");
+        if (!priceResponse.ok) {
+          console.error("Failed to fetch price of NEAR");
+        }
+        else {
+          const nearPriceUsd: number = await priceResponse.json();
+          const nearToken = initialTokensList.find((t: Token) => {return t.id === "near"});
+          if (nearToken) {
+            initialTokensList[initialTokensList.indexOf(nearToken)].price_usd = nearPriceUsd;
+          }
+        }
         
-        setTokens(tokensList);
+        setTokens(initialTokensList.concat(tokensList));
       } catch (error) {
         console.error("Failed to fetch tokens:", error);
         setTokens([]);

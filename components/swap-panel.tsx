@@ -9,6 +9,7 @@ import { NearWalletSelector } from "./wallet-selector";
 import { Account } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
 import { getUserTokens } from "@/lib/wallets/wallet-methods";
+import { calculateExchangeRate, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
 
 interface NearTxAction {
   FunctionCall: {
@@ -61,55 +62,11 @@ interface DexRouteResponse {
   needs_unwrap: boolean;
 }
 
-// Mock data for token info
-const MOCK_TOKENS: Token[] = [
-  { id: "near", name: "NEAR Protocol", symbol: "NEAR", price_usd: 2.55, decimals: 18, icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiB2aWV3Qm94PSIwIDAgMTA4MCAxMDgwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiBmaWxsPSIjMDBFQzk3Ii8+CjxwYXRoIGQ9Ik03NzMuNDI1IDI0My4zOEM3NTEuNDUzIDI0My4zOCA3MzEuMDU0IDI1NC43NzIgNzE5LjU0NCAyNzMuNDk5TDU5NS41MzggNDU3LjYwNkM1OTEuNDk5IDQ2My42NzMgNTkzLjEzOCA0NzEuODU0IDU5OS4yMDYgNDc1Ljg5M0M2MDQuMTI0IDQ3OS4xNzIgNjEwLjYzMSA0NzguNzY2IDYxNS4xMSA0NzQuOTEzTDczNy4xNzIgMzY5LjA0MkM3MzkuMiAzNjcuMjE3IDc0Mi4zMjcgMzY3LjQwMyA3NDQuMTUyIDM2OS40MzFDNzQ0Ljk4IDM3MC4zNjEgNzQ1LjQyIDM3MS41NjEgNzQ1LjQyIDM3Mi43OTRWNzA0LjI2NUM3NDUuNDIgNzA3LjAwMyA3NDMuMjA2IDcwOS4yIDc0MC40NjggNzA5LjJDNzM4Ljk5NyA3MDkuMiA3MzcuNjExIDcwOC41NTggNzM2LjY4MiA3MDcuNDI1TDM2Ny43MDcgMjY1Ljc1OEMzNTUuNjkgMjUxLjU3NyAzMzguMDQ1IDI0My4zOTcgMzE5LjQ3IDI0My4zOEgzMDYuNTc1QzI3MS42NzMgMjQzLjM4IDI0My4zOCAyNzEuNjczIDI0My4zOCAzMDYuNTc1Vjc3My40MjVDMjQzLjM4IDgwOC4zMjcgMjcxLjY3MyA4MzYuNjIgMzA2LjU3NSA4MzYuNjJDMzI4LjU0NiA4MzYuNjIgMzQ4Ljk0NiA4MjUuMjI4IDM2MC40NTYgODA2LjUwMUw0ODQuNDYyIDYyMi4zOTRDNDg4LjUwMSA2MTYuMzI3IDQ4Ni44NjIgNjA4LjE0NiA0ODAuNzk0IDYwNC4xMDdDNDc1Ljg3NiA2MDAuODI4IDQ2OS4zNjkgNjAxLjIzNCA0NjQuODkgNjA1LjA4N0wzNDIuODI4IDcxMC45NThDMzQwLjggNzEyLjc4MyAzMzcuNjczIDcxMi41OTcgMzM1Ljg0OCA3MTAuNTY5QzMzNS4wMiA3MDkuNjM5IDMzNC41OCA3MDguNDM5IDMzNC41OTcgNzA3LjIwNlYzNzUuNjUxQzMzNC41OTcgMzcyLjkxMyAzMzYuODExIDM3MC43MTUgMzM5LjU0OSAzNzAuNzE1QzM0MS4wMDMgMzcwLjcxNSAzNDIuNDA2IDM3MS4zNTggMzQzLjMzNSAzNzIuNDlMNzEyLjI1OSA4MTQuMjQyQzcyNC4yNzYgODI4LjQyMyA3NDEuOTIxIDgzNi42MDMgNzYwLjQ5NiA4MzYuNjJINzczLjM5MkM4MDguMjkzIDgzNi42MzcgODM2LjYwMyA4MDguMzYxIDgzNi42MzcgNzczLjQ1OVYzMDYuNTc1QzgzNi42MzcgMjcxLjY3MyA4MDguMzQ0IDI0My4zOCA3NzMuNDQyIDI0My4zOEg3NzMuNDI1WiIgZmlsbD0iYmxhY2siLz4KPC9zdmc+" },
-  { id: "usdc", name: "USDC", symbol: "USDC", price_usd: 1.0, decimals: 18, icon: "data:image/svg+xml,%3C%3Fxml version=%221.0%22 encoding=%22utf-8%22%3F%3E%3C!-- Generator: Adobe Illustrator 22.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0) --%3E%3Csvg version=%221.1%22 id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 x=%220px%22 y=%220px%22 viewBox=%220 0 256 256%22 style=%22enable-background:new 0 0 256 256;%22 xml:space=%22preserve%22%3E%3Cstyle type=%22text/css%22%3E .st0%7Bfill:%232775CA;%7D .st1%7Bfill:%23FFFFFF;%7D%0A%3C/style%3E%3Ccircle class=%22st0%22 cx=%22128%22 cy=%22128%22 r=%22128%22/%3E%3Cpath class=%22st1%22 d=%22M104,217c0,3-2.4,4.7-5.2,3.8C60,208.4,32,172.2,32,129.3c0-42.8,28-79.1,66.8-91.5c2.9-0.9,5.2,0.8,5.2,3.8 v7.5c0,2-1.5,4.3-3.4,5C69.9,65.4,48,94.9,48,129.3c0,34.5,21.9,63.9,52.6,75.1c1.9,0.7,3.4,3,3.4,5V217z%22/%3E%3Cpath class=%22st1%22 d=%22M136,189.3c0,2.2-1.8,4-4,4h-8c-2.2,0-4-1.8-4-4v-12.6c-17.5-2.4-26-12.1-28.3-25.5c-0.4-2.3,1.4-4.3,3.7-4.3 h9.1c1.9,0,3.5,1.4,3.9,3.2c1.7,7.9,6.3,14,20.3,14c10.3,0,17.7-5.8,17.7-14.4c0-8.6-4.3-11.9-19.5-14.4c-22.4-3-33-9.8-33-27.3 c0-13.5,10.3-24.1,26.1-26.3V69.3c0-2.2,1.8-4,4-4h8c2.2,0,4,1.8,4,4v12.7c12.9,2.3,21.1,9.6,23.8,21.8c0.5,2.3-1.3,4.4-3.7,4.4 h-8.4c-1.8,0-3.3-1.2-3.8-2.9c-2.3-7.7-7.8-11.1-17.4-11.1c-10.6,0-16.1,5.1-16.1,12.3c0,7.6,3.1,11.4,19.4,13.7 c22,3,33.4,9.3,33.4,28c0,14.2-10.6,25.7-27.1,28.3V189.3z%22/%3E%3Cpath class=%22st1%22 d=%22M157.2,220.8c-2.9,0.9-5.2-0.8-5.2-3.8v-7.5c0-2.2,1.3-4.3,3.4-5c30.6-11.2,52.6-40.7,52.6-75.1 c0-34.5-21.9-63.9-52.6-75.1c-1.9-0.7-3.4-3-3.4-5v-7.5c0-3,2.4-4.7,5.2-3.8C196,50.2,224,86.5,224,129.3 C224,172.2,196,208.4,157.2,220.8z%22/%3E%3C/svg%3E%0A" },
-  { id: "bitcoin", name: "Bitcoin", symbol: "BTC", price_usd: 120000, decimals: 18, icon: "" },
-  { id: "ethereum", name: "Ethereum", symbol: "ETH", price_usd: 4500.50, decimals: 18, icon: "" },
+// Hard-coded tokens to include on start (NEAR, USDC)
+const INITIAL_TOKENS: Token[] = [
+  { id: "near", name: "NEAR", symbol: "NEAR", price_usd: 0, decimals: 24, icon: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiB2aWV3Qm94PSIwIDAgMTA4MCAxMDgwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIiBmaWxsPSIjMDBFQzk3Ii8+CjxwYXRoIGQ9Ik03NzMuNDI1IDI0My4zOEM3NTEuNDUzIDI0My4zOCA3MzEuMDU0IDI1NC43NzIgNzE5LjU0NCAyNzMuNDk5TDU5NS41MzggNDU3LjYwNkM1OTEuNDk5IDQ2My42NzMgNTkzLjEzOCA0NzEuODU0IDU5OS4yMDYgNDc1Ljg5M0M2MDQuMTI0IDQ3OS4xNzIgNjEwLjYzMSA0NzguNzY2IDYxNS4xMSA0NzQuOTEzTDczNy4xNzIgMzY5LjA0MkM3MzkuMiAzNjcuMjE3IDc0Mi4zMjcgMzY3LjQwMyA3NDQuMTUyIDM2OS40MzFDNzQ0Ljk4IDM3MC4zNjEgNzQ1LjQyIDM3MS41NjEgNzQ1LjQyIDM3Mi43OTRWNzA0LjI2NUM3NDUuNDIgNzA3LjAwMyA3NDMuMjA2IDcwOS4yIDc0MC40NjggNzA5LjJDNzM4Ljk5NyA3MDkuMiA3MzcuNjExIDcwOC41NTggNzM2LjY4MiA3MDcuNDI1TDM2Ny43MDcgMjY1Ljc1OEMzNTUuNjkgMjUxLjU3NyAzMzguMDQ1IDI0My4zOTcgMzE5LjQ3IDI0My4zOEgzMDYuNTc1QzI3MS42NzMgMjQzLjM4IDI0My4zOCAyNzEuNjczIDI0My4zOCAzMDYuNTc1Vjc3My40MjVDMjQzLjM4IDgwOC4zMjcgMjcxLjY3MyA4MzYuNjIgMzA2LjU3NSA4MzYuNjJDMzI4LjU0NiA4MzYuNjIgMzQ4Ljk0NiA4MjUuMjI4IDM2MC40NTYgODA2LjUwMUw0ODQuNDYyIDYyMi4zOTRDNDg4LjUwMSA2MTYuMzI3IDQ4Ni44NjIgNjA4LjE0NiA0ODAuNzk0IDYwNC4xMDdDNDc1Ljg3NiA2MDAuODI4IDQ2OS4zNjkgNjAxLjIzNCA0NjQuODkgNjA1LjA4N0wzNDIuODI4IDcxMC45NThDMzQwLjggNzEyLjc4MyAzMzcuNjczIDcxMi41OTcgMzM1Ljg0OCA3MTAuNTY5QzMzNS4wMiA3MDkuNjM5IDMzNC41OCA3MDguNDM5IDMzNC41OTcgNzA3LjIwNlYzNzUuNjUxQzMzNC41OTcgMzcyLjkxMyAzMzYuODExIDM3MC43MTUgMzM5LjU0OSAzNzAuNzE1QzM0MS4wMDMgMzcwLjcxNSAzNDIuNDA2IDM3MS4zNTggMzQzLjMzNSAzNzIuNDlMNzEyLjI1OSA4MTQuMjQyQzcyNC4yNzYgODI4LjQyMyA3NDEuOTIxIDgzNi42MDMgNzYwLjQ5NiA4MzYuNjJINzczLjM5MkM4MDguMjkzIDgzNi42MzcgODM2LjYwMyA4MDguMzYxIDgzNi42MzcgNzczLjQ1OVYzMDYuNTc1QzgzNi42MzcgMjcxLjY3MyA4MDguMzQ0IDI0My4zOCA3NzMuNDQyIDI0My4zOEg3NzMuNDI1WiIgZmlsbD0iYmxhY2siLz4KPC9zdmc+" },
+  { id: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1", name: "USDC", symbol: "USDC", price_usd: 1.0, decimals: 6, icon: "data:image/svg+xml,%3C%3Fxml version=%221.0%22 encoding=%22utf-8%22%3F%3E%3C!-- Generator: Adobe Illustrator 22.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0) --%3E%3Csvg version=%221.1%22 id=%22Layer_1%22 xmlns=%22http://www.w3.org/2000/svg%22 xmlns:xlink=%22http://www.w3.org/1999/xlink%22 x=%220px%22 y=%220px%22 viewBox=%220 0 256 256%22 style=%22enable-background:new 0 0 256 256;%22 xml:space=%22preserve%22%3E%3Cstyle type=%22text/css%22%3E .st0%7Bfill:%232775CA;%7D .st1%7Bfill:%23FFFFFF;%7D%0A%3C/style%3E%3Ccircle class=%22st0%22 cx=%22128%22 cy=%22128%22 r=%22128%22/%3E%3Cpath class=%22st1%22 d=%22M104,217c0,3-2.4,4.7-5.2,3.8C60,208.4,32,172.2,32,129.3c0-42.8,28-79.1,66.8-91.5c2.9-0.9,5.2,0.8,5.2,3.8 v7.5c0,2-1.5,4.3-3.4,5C69.9,65.4,48,94.9,48,129.3c0,34.5,21.9,63.9,52.6,75.1c1.9,0.7,3.4,3,3.4,5V217z%22/%3E%3Cpath class=%22st1%22 d=%22M136,189.3c0,2.2-1.8,4-4,4h-8c-2.2,0-4-1.8-4-4v-12.6c-17.5-2.4-26-12.1-28.3-25.5c-0.4-2.3,1.4-4.3,3.7-4.3 h9.1c1.9,0,3.5,1.4,3.9,3.2c1.7,7.9,6.3,14,20.3,14c10.3,0,17.7-5.8,17.7-14.4c0-8.6-4.3-11.9-19.5-14.4c-22.4-3-33-9.8-33-27.3 c0-13.5,10.3-24.1,26.1-26.3V69.3c0-2.2,1.8-4,4-4h8c2.2,0,4,1.8,4,4v12.7c12.9,2.3,21.1,9.6,23.8,21.8c0.5,2.3-1.3,4.4-3.7,4.4 h-8.4c-1.8,0-3.3-1.2-3.8-2.9c-2.3-7.7-7.8-11.1-17.4-11.1c-10.6,0-16.1,5.1-16.1,12.3c0,7.6,3.1,11.4,19.4,13.7 c22,3,33.4,9.3,33.4,28c0,14.2-10.6,25.7-27.1,28.3V189.3z%22/%3E%3Cpath class=%22st1%22 d=%22M157.2,220.8c-2.9,0.9-5.2-0.8-5.2-3.8v-7.5c0-2.2,1.3-4.3,3.4-5c30.6-11.2,52.6-40.7,52.6-75.1 c0-34.5-21.9-63.9-52.6-75.1c-1.9-0.7-3.4-3-3.4-5v-7.5c0-3,2.4-4.7,5.2-3.8C196,50.2,224,86.5,224,129.3 C224,172.2,196,208.4,157.2,220.8z%22/%3E%3C/svg%3E%0A" },
 ];
-
-// Util functions
-const calculateExchangeRate = (tokenA: Token, tokenB: Token) => {
-  if (tokenB.price_usd === 0) return 0;
-  return tokenA.price_usd / tokenB.price_usd;
-};
-
-const convertToBaseUnit = (amount: string, token: Token): string => {
-  if (!amount || !token.decimals) return "0";
-  
-  try {
-    const cleanAmount = amount.replace(/,/g, "").trim();
-    if (!cleanAmount || isNaN(parseFloat(cleanAmount))) return "0";
-    
-    const [wholePart, decimalPart = ""] = cleanAmount.split(".");
-    const paddedDecimal = (decimalPart + "0".repeat(token.decimals)).substring(0, token.decimals);
-    const combined = wholePart + paddedDecimal;
-    const result = combined.replace(/^0+/, "") || "0";
-    
-    return result;
-  } catch (error) {
-    console.error("Error converting amount:", error);
-    return "0";
-  }
-};
-
-const convertToDisplayUnit = (baseAmount: string, token: Token): string => {
-  if (!baseAmount || !token.decimals) return "0";
-  
-  try {
-    const amountBigInt = BigInt(baseAmount);
-    const divisor = BigInt(Math.pow(10, token.decimals));
-    
-    const wholePart = amountBigInt / divisor;
-    const fractionalPart = amountBigInt % divisor;
-    const fractionalStr = fractionalPart.toString().padStart(token.decimals, "0");
-    return `${wholePart.toString()}.${fractionalStr}`;
-  } catch (error) {
-    console.error("Error converting display amount:", error);
-    return "0";
-  }
-};
 
 export default function SwapPanel() {
   const [account, setAccount] = useState<Account>();
@@ -117,8 +74,8 @@ export default function SwapPanel() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [userTokens, setUserTokens] = useState<UserTokenInfo[]>();
 
-  const [fromToken, setFromToken] = useState<Token>(MOCK_TOKENS[0]);
-  const [toToken, setToToken] = useState<Token>(MOCK_TOKENS[1]);
+  const [fromToken, setFromToken] = useState<Token>(INITIAL_TOKENS[0]);
+  const [toToken, setToToken] = useState<Token>(INITIAL_TOKENS[1]);
   const [fromAmount, setFromAmount] = useState<string>("");
   const [toAmount, setToAmount] = useState<string>("");
   const [fromTokenBalance, setFromTokenBalance] = useState<number>(0);
@@ -133,6 +90,23 @@ export default function SwapPanel() {
   const [swapInProgress, setSwapInProgress] = useState<boolean>(false);
 
   useEffect(() => {
+    // Get the price of native NEAR here using wNEAR
+    fetch("https://prices.intear.tech/price?token_id=wrap.near")
+    .then((priceResponse) => {
+      if (!priceResponse.ok) {
+        console.error("Failed to fetch price of NEAR");
+        return Promise.reject("Failed to fetch price of NEAR");
+      }
+      return priceResponse.json();
+    })
+    .then((nearPriceUsd: number) => {
+      // By this point, fromToken is already a NEAR Token
+      fromToken.price_usd = nearPriceUsd;
+    })
+    .catch((error) => {
+      console.error("Error fetching NEAR price:", error);
+    });
+      
     nearConnector.wallet().then((wallet) => {
       wallet.getAccounts().then(async (t: Account[]) => {
         setAccount(t[0]);
@@ -149,9 +123,9 @@ export default function SwapPanel() {
 
   useEffect(() => {
     if (fromToken && toToken) {
-      getDexRoute(); // Is this inefficient? Should avoid spamming on every amount change?
+      getDexRoute(fromToken, toToken); // Is this inefficient? Should avoid spamming on every amount change?
     }
-  }, [fromToken, toToken, fromAmount, toAmount])
+  }, [fromToken, toToken, fromAmount, toAmount]);
 
   const handleSignOut = () => {
     console.log("User signed out!");
@@ -210,12 +184,12 @@ export default function SwapPanel() {
     }
   };
 
-  const filteredFromTokens = MOCK_TOKENS.filter(token => 
+  const filteredFromTokens = INITIAL_TOKENS.filter(token => 
     token.name.toLowerCase().includes(searchFrom.toLowerCase()) ||
     token.symbol.toLowerCase().includes(searchFrom.toLowerCase())
   );
 
-  const filteredToTokens = MOCK_TOKENS.filter(token => 
+  const filteredToTokens = INITIAL_TOKENS.filter(token => 
     token.name.toLowerCase().includes(searchTo.toLowerCase()) ||
     token.symbol.toLowerCase().includes(searchTo.toLowerCase())
   );
@@ -246,7 +220,6 @@ export default function SwapPanel() {
         const rate = calculateExchangeRate(fromToken, toToken);
         const calculatedAmount = Number(value) * rate;
         setToAmount(Number(calculatedAmount).toFixed(6));
-        getDexRoute();
       }
     }
   };
@@ -259,7 +232,6 @@ export default function SwapPanel() {
         const rate = calculateExchangeRate(toToken, fromToken);
         const calculatedAmount = Number(value) * rate;
         setFromAmount(Number(calculatedAmount).toFixed(6));
-        getDexRoute();
       }
     }
   };
@@ -280,9 +252,6 @@ export default function SwapPanel() {
     const tempAmount = fromAmount;
     setFromAmount(toAmount);
     setToAmount(tempAmount);
-
-    updateUserTokenBalancesDisplay(toToken, fromToken);
-    getDexRoute();
   };
 
   const handleSwap = () => {
@@ -300,9 +269,9 @@ export default function SwapPanel() {
     }, 2000);
   };
 
-  const getDexRoute = async () => {
+  const getDexRoute = async (newFromToken: Token, newToToken: Token) => {
     setLoadingRouteInfo(true);
-    if (!fromAmount || !toAmount || !fromToken.id || !toToken.id) {
+    if (!fromAmount || !toAmount || !newFromToken.id || !newToToken.id) {
       console.error("Missing required parameters for routing");
       setLoadingRouteInfo(false);
       setRouteInfo(undefined);
@@ -310,11 +279,11 @@ export default function SwapPanel() {
     }
   
     try {
-      const amountIn = convertToBaseUnit(fromAmount, fromToken);
+      const amountIn = convertToBaseUnit(fromAmount, newFromToken);
       const response = await fetch(
         `https://router.intear.tech/route?` + 
-        `token_in=${fromToken.id}&` +
-        `token_out=${toToken.id}&` +
+        `token_in=${newFromToken.id}&` +
+        `token_out=${newToToken.id}&` +
         `amount_in=${amountIn}&` +
         `max_wait_ms=1500&` +
         `slippage_type=Fixed&` +
@@ -387,7 +356,7 @@ export default function SwapPanel() {
             <TokenSelectorModal
               isOpen={showFromDropdown}
               onClose={() => setShowFromDropdown(false)}
-              tokens={filteredFromTokens}
+              initialTokensList={INITIAL_TOKENS}
               onSelectToken={handleFromTokenSelect}
               userAccount={account?.accountId}
             />
@@ -453,7 +422,7 @@ export default function SwapPanel() {
             <TokenSelectorModal
               isOpen={showToDropdown}
               onClose={() => setShowToDropdown(false)}
-              tokens={filteredToTokens}
+              initialTokensList={INITIAL_TOKENS}
               onSelectToken={handleToTokenSelect}
               userAccount={account?.accountId}
             />
@@ -480,7 +449,7 @@ export default function SwapPanel() {
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-white text-lg font-medium">{loadingRouteInfo ? <><LoadingSpinner /> {"Fetching best route..."}</> : "Route Info"}</h2>
           <button
-            onClick={() => getDexRoute()}
+            onClick={() => getDexRoute(fromToken, toToken)}
             className="bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
           >
             Refresh
