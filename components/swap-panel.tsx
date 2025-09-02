@@ -541,6 +541,7 @@ export default function SwapPanel() {
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-white text-lg font-medium">{loadingRouteInfo ? <><LoadingSpinner /> {"Fetching best route..."}</> : "Route Info"}</h2>
           <button
+            disabled={loadingRouteInfo}
             onClick={() => getDexRoute(fromToken, toToken)}
             className="bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
           >
