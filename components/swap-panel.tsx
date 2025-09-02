@@ -367,7 +367,8 @@ export default function SwapPanel() {
         `slippage_type=Fixed&` +
         `slippage=${slippage/100}` +
         ((account && account.accountId) ? `&trader_account_id=${account.accountId}` : "")
-        // TODO: signing_public_key for NEAR Intents
+        // TODO: signing_public_key for NEAR Intents, for now remove intents from dex list
+        + `&dexes=Rhea,RheaDcl,Veax,Aidols,GraFun,Jumpdefi,Wrap,MetaPool,Linear`
       );
       
       if (!response.ok) {
