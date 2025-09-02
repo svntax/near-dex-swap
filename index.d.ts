@@ -52,6 +52,19 @@ interface GetBalanceResponse {
   }
 }
 
+interface ViewAccountResponse {
+  jsonrpc: string;
+  result: {
+    amount: string;
+    block_hash: string;
+    block_height: number;
+    code_hash: string;
+    locked: string;
+    storage_paid_at: number;
+    storage_usage: number;
+  }
+}
+
 // Because function calls from Intear DEX Aggregator are a slightly different format than FunctionCallAction
 interface NearTxActionIntear {
   FunctionCall: {

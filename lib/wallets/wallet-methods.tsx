@@ -59,3 +59,37 @@ export const byteArrayToUtf8String = (byteArray: number[]): string => {
   const utf8String = Buffer.from(byteArray).toString("utf8").replaceAll("\"", "");
   return utf8String;
 };
+
+export const viewAccount = async (accountId: string): Promise<ViewAccountResponse> => {
+  const url = "https://rpc.intea.rs/";
+  const requestBody = {
+    jsonrpc: "2.0",
+    id: "dontcare",
+    method: "query",
+    params: {
+      request_type: "view_account",
+      finality: "final",
+      account_id: accountId
+    }
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error viewing user's account:", error);
+    throw error;
+  }
+};

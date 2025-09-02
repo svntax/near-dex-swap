@@ -8,7 +8,7 @@ import Image from "next/image";
 import { NearWalletSelector } from "./wallet-selector";
 import { Account, Optional } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
-import { byteArrayToUtf8String, getUserTokens, getBalance } from "@/lib/wallets/wallet-methods";
+import { byteArrayToUtf8String, getUserTokens, getBalance, viewAccount } from "@/lib/wallets/wallet-methods";
 import { calculateExchangeRate, createTransactionFromIntearTransaction, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
 import { Transaction } from "@hot-labs/near-connect/build/types/transactions";
 
@@ -62,6 +62,7 @@ export default function SwapPanel() {
   const [wallet, setWallet] = useState<NearWallet | undefined>();
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [userTokens, setUserTokens] = useState<UserTokenInfo[]>();
+  const [nearBalance, setNearBalance] = useState<string>("");
 
   const [fromToken, setFromToken] = useState<Token>(INITIAL_TOKENS[0]);
   const [toToken, setToToken] = useState<Token>(INITIAL_TOKENS[1]);
@@ -71,8 +72,6 @@ export default function SwapPanel() {
   const [toTokenBalance, setToTokenBalance] = useState<number>(0);
   const [showFromDropdown, setShowFromDropdown] = useState<boolean>(false);
   const [showToDropdown, setShowToDropdown] = useState<boolean>(false);
-  const [searchFrom, setSearchFrom] = useState<string>("");
-  const [searchTo, setSearchTo] = useState<string>("");
   const [slippage, setSlippage] = useState<number>(1);
   const [routeInfo, setRouteInfo] = useState<DexRouteResponse>();
   const [loadingRouteInfo, setLoadingRouteInfo] = useState<boolean>(false);
@@ -98,13 +97,18 @@ export default function SwapPanel() {
       
     nearConnector.wallet().then((wallet) => {
       wallet.getAccounts().then(async (t: Account[]) => {
+        viewAccount(t[0].accountId).then((response: ViewAccountResponse) => {
+          setNearBalance(response.result.amount);
+        }).catch(error => {
+          console.error("Error fetching user's NEAR balance:", error);
+        });
         setAccount(t[0]);
         setWallet(wallet);
         setIsConnected(true);
         getUserTokens(t[0].accountId).then((tokensOwned: UserTokenInfo[]) => {
           setUserTokens(tokensOwned);
           updateUserTokenBalancesDisplay(fromToken, toToken);
-        }).catch (error => {
+        }).catch(error => {
           console.error("Error fetching user tokens:", error);
         });
       });
@@ -123,6 +127,7 @@ export default function SwapPanel() {
     setAccount(undefined);
     setWallet(undefined);
     setUserTokens(undefined);
+    setNearBalance("");
     setFromTokenBalance(0);
     setToTokenBalance(0);
   };
@@ -133,11 +138,16 @@ export default function SwapPanel() {
     setAccount(account);
     nearConnector.wallet().then(userWallet => {
       setWallet(userWallet);
-      getUserTokens(account.accountId).then((tokensOwned: UserTokenInfo[]) => {
-        setUserTokens(tokensOwned);
-        updateUserTokenBalancesDisplay(fromToken, toToken);
-      }).catch (error => {
-        console.error("Error fetching user tokens:", error);
+      viewAccount(account.accountId).then((response: ViewAccountResponse) => {
+        setNearBalance(response.result.amount);
+        getUserTokens(account.accountId).then((tokensOwned: UserTokenInfo[]) => {
+          setUserTokens(tokensOwned);
+          updateUserTokenBalancesDisplay(fromToken, toToken);
+        }).catch (error => {
+          console.error("Error fetching user tokens:", error);
+        });
+      }).catch(error => {
+        console.error("Error fetching user's NEAR balance:", error);
       });
     });
   };
@@ -149,27 +159,41 @@ export default function SwapPanel() {
   const updateUserTokenBalancesDisplay = (newFromToken: Token, newToToken: Token) => {
     if(!userTokens) return;
     if (newFromToken) {
-      const tokenOwned = userTokens.find((t: UserTokenInfo) => {
-        return t.token.account_id === newFromToken.id;
-      });
-      if (tokenOwned) {
-        const amountForDisplay = convertToDisplayUnit(tokenOwned.balance.toString(), newFromToken);
-        setFromTokenBalance(Number(amountForDisplay));
+      if (newFromToken.id === "near") {
+        const displayAmount = convertToDisplayUnit(nearBalance, newFromToken);
+        const balance = Number(displayAmount).toFixed(6);
+        setFromTokenBalance(Number(balance));
       }
       else {
-        setFromTokenBalance(0);
+        const tokenOwned = userTokens.find((t: UserTokenInfo) => {
+          return t.token.account_id === newFromToken.id;
+        });
+        if (tokenOwned) {
+          const amountForDisplay = convertToDisplayUnit(tokenOwned.balance.toString(), newFromToken);
+          setFromTokenBalance(Number(amountForDisplay));
+        }
+        else {
+          setFromTokenBalance(0);
+        }
       }
     }
     if (newToToken) {
-      const tokenOwned = userTokens.find((t: UserTokenInfo) => {
-        return t.token.account_id === newToToken.id;
-      });
-      if (tokenOwned) {
-        const amountForDisplay = convertToDisplayUnit(tokenOwned.balance.toString(), newToToken);
-        setToTokenBalance(Number(amountForDisplay));
+      if (newToToken.id === "near") {
+        const displayAmount = convertToDisplayUnit(nearBalance, newToToken);
+        const balance = Number(displayAmount).toFixed(6);
+        setToTokenBalance(Number(balance));
       }
       else {
-        setToTokenBalance(0);
+        const tokenOwned = userTokens.find((t: UserTokenInfo) => {
+          return t.token.account_id === newToToken.id;
+        });
+        if (tokenOwned) {
+          const amountForDisplay = convertToDisplayUnit(tokenOwned.balance.toString(), newToToken);
+          setToTokenBalance(Number(amountForDisplay));
+        }
+        else {
+          setToTokenBalance(0);
+        }
       }
     }
   };
@@ -177,7 +201,6 @@ export default function SwapPanel() {
   const handleFromTokenSelect = (token: Token) => {
     setFromToken(token);
     setShowFromDropdown(false);
-    setSearchFrom("");
     setFromAmount("");
     setToAmount("");
     updateUserTokenBalancesDisplay(token, toToken);
@@ -186,7 +209,6 @@ export default function SwapPanel() {
   const handleToTokenSelect = (token: Token) => {
     setToToken(token);
     setShowToDropdown(false);
-    setSearchTo("");
     setFromAmount("");
     setToAmount("");
     updateUserTokenBalancesDisplay(fromToken, token);
@@ -225,6 +247,8 @@ export default function SwapPanel() {
 
   // For use with button that swaps the two tokens' places
   const switchTokens = () => {
+    updateUserTokenBalancesDisplay(toToken, fromToken);
+
     const tempToken = fromToken;
     setFromToken(toToken);
     setToToken(tempToken);
@@ -299,6 +323,14 @@ export default function SwapPanel() {
             }
           }]
         });
+
+        // Update balances data
+        viewAccount(account.accountId).then((response: ViewAccountResponse) => {
+          setNearBalance(response.result.amount);
+          updateUserTokenBalancesDisplay(fromToken, toToken);
+        }).catch(error => {
+          console.error("Error fetching user's updated NEAR balance:", error);
+        });
       }
     } catch (error) {
       console.error("Error occurred during swap:", error);
@@ -363,7 +395,7 @@ export default function SwapPanel() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>From</span>
-          <span>Balance: {fromTokenBalance} {fromToken.symbol}</span>
+          <span>Balance: {fromToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, fromToken)).toFixed(6)) : fromTokenBalance} {fromToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
@@ -429,7 +461,7 @@ export default function SwapPanel() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>To</span>
-          <span>Balance: {toTokenBalance} {toToken.symbol}</span>
+          <span>Balance: {toToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, toToken)).toFixed(6)) : toTokenBalance} {toToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
@@ -536,10 +568,10 @@ export default function SwapPanel() {
             handleConnectWallet();
           }
         }}
-        disabled={(swapInProgress || loadingRouteInfo) || (isConnected && !fromAmount)}
+        disabled={(swapInProgress || loadingRouteInfo || (isConnected && !routeInfo)) || (isConnected && !fromAmount) || (isConnected && Number(fromAmount) > fromTokenBalance)}
         className={`w-full mt-6 py-3 rounded-lg font-medium transition-colors ${
-          isConnected 
-            ? (!(swapInProgress || loadingRouteInfo) && fromAmount ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-blue-900 text-slate-500")
+          isConnected
+            ? (!(swapInProgress || loadingRouteInfo) && routeInfo && fromAmount && (Number(fromAmount) <= fromTokenBalance) ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-blue-900 text-slate-500")
             : loadingRouteInfo ? "bg-blue-900 text-slate-500" : "bg-blue-500 hover:bg-blue-600 text-white"
         }`}
       >
@@ -548,7 +580,7 @@ export default function SwapPanel() {
         }
         {isConnected 
           ? (fromAmount ?
-              ((swapInProgress || loadingRouteInfo) ? "Processing..." : "Swap")
+              ((swapInProgress || loadingRouteInfo) ? "Processing..." : (Number(fromAmount) > fromTokenBalance ? "Not enough balance" : "Swap"))
             : "Enter an amount") 
           : (loadingRouteInfo ? "Processing..." : "Connect Wallet")}
       </button>
