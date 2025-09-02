@@ -327,18 +327,17 @@ export default function SwapPanel() {
             }
           }]
         });
-
-        setSwapFailVisible(false);
-        setSwapSuccess(true);
-
-        // Update balances data
-        viewAccount(account.accountId).then((response: ViewAccountResponse) => {
-          setNearBalance(response.result.amount);
-          updateUserTokenBalancesDisplay(fromToken, toToken);
-        }).catch(error => {
-          console.error("Error fetching user's updated NEAR balance:", error);
-        });
       }
+      setSwapFailVisible(false);
+      setSwapSuccess(true);
+
+      // Update balances data
+      viewAccount(account.accountId).then((response: ViewAccountResponse) => {
+        setNearBalance(response.result.amount);
+        updateUserTokenBalancesDisplay(fromToken, toToken);
+      }).catch(error => {
+        console.error("Error fetching user's updated NEAR balance:", error);
+      });
     } catch (error) {
       console.error("Error occurred during swap:", error);
       setSwapFailVisible(true);
