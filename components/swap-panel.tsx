@@ -99,23 +99,30 @@ export default function SwapPanel() {
       
     nearConnector.wallet().then((wallet) => {
       wallet.getAccounts().then(async (t: Account[]) => {
+        setAccount(t[0]);
+        setWallet(wallet);
+        setIsConnected(true);
         viewAccount(t[0].accountId).then((response: ViewAccountResponse) => {
           setNearBalance(response.result.amount);
         }).catch(error => {
           console.error("Error fetching user's NEAR balance:", error);
         });
-        setAccount(t[0]);
-        setWallet(wallet);
-        setIsConnected(true);
-        getUserTokens(t[0].accountId).then((tokensOwned: UserTokenInfo[]) => {
-          setUserTokens(tokensOwned);
-          updateUserTokenBalancesDisplay(fromToken, toToken);
-        }).catch(error => {
-          console.error("Error fetching user tokens:", error);
-        });
       });
     });
   }, []);
+
+  // Separate useEffect for updating displayed balances AFTER nearBalance was updated
+  useEffect(() => {
+    if (!account) {
+      return;
+    }
+    getUserTokens(account.accountId).then((tokensOwned: UserTokenInfo[]) => {
+      setUserTokens(tokensOwned);
+      updateUserTokenBalancesDisplay(tokensOwned, fromToken, toToken);
+    }).catch(error => {
+      console.error("Error fetching user's tokens:", error);
+    });
+  }, [account, nearBalance]);
 
   useEffect(() => {
     if (fromToken && toToken) {
@@ -144,12 +151,6 @@ export default function SwapPanel() {
       setWallet(userWallet);
       viewAccount(account.accountId).then((response: ViewAccountResponse) => {
         setNearBalance(response.result.amount);
-        getUserTokens(account.accountId).then((tokensOwned: UserTokenInfo[]) => {
-          setUserTokens(tokensOwned);
-          updateUserTokenBalancesDisplay(fromToken, toToken);
-        }).catch (error => {
-          console.error("Error fetching user tokens:", error);
-        });
       }).catch(error => {
         console.error("Error fetching user's NEAR balance:", error);
       });
@@ -160,8 +161,8 @@ export default function SwapPanel() {
     await nearConnector.connect();
   };
 
-  const updateUserTokenBalancesDisplay = (newFromToken: Token, newToToken: Token) => {
-    if(!userTokens) return;
+  const updateUserTokenBalancesDisplay = (tokensOwned: UserTokenInfo[] | undefined, newFromToken: Token, newToToken: Token) => {
+    if(!tokensOwned) return;
     if (newFromToken) {
       if (newFromToken.id === "near") {
         const displayAmount = convertToDisplayUnit(nearBalance, newFromToken);
@@ -169,7 +170,7 @@ export default function SwapPanel() {
         setFromTokenBalance(Number(balance));
       }
       else {
-        const tokenOwned = userTokens.find((t: UserTokenInfo) => {
+        const tokenOwned = tokensOwned.find((t: UserTokenInfo) => {
           return t.token.account_id === newFromToken.id;
         });
         if (tokenOwned) {
@@ -188,7 +189,7 @@ export default function SwapPanel() {
         setToTokenBalance(Number(balance));
       }
       else {
-        const tokenOwned = userTokens.find((t: UserTokenInfo) => {
+        const tokenOwned = tokensOwned.find((t: UserTokenInfo) => {
           return t.token.account_id === newToToken.id;
         });
         if (tokenOwned) {
@@ -207,7 +208,7 @@ export default function SwapPanel() {
     setShowFromDropdown(false);
     setFromAmount("");
     setToAmount("");
-    updateUserTokenBalancesDisplay(token, toToken);
+    updateUserTokenBalancesDisplay(userTokens, token, toToken);
   };
 
   const handleToTokenSelect = (token: Token) => {
@@ -215,7 +216,7 @@ export default function SwapPanel() {
     setShowToDropdown(false);
     setFromAmount("");
     setToAmount("");
-    updateUserTokenBalancesDisplay(fromToken, token);
+    updateUserTokenBalancesDisplay(userTokens, fromToken, token);
   };
 
   const handleFromAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,7 +252,7 @@ export default function SwapPanel() {
 
   // For use with button that swaps the two tokens' places
   const switchTokens = () => {
-    updateUserTokenBalancesDisplay(toToken, fromToken);
+    updateUserTokenBalancesDisplay(userTokens, toToken, fromToken);
 
     const tempToken = fromToken;
     setFromToken(toToken);
@@ -334,7 +335,7 @@ export default function SwapPanel() {
       // Update balances data
       viewAccount(account.accountId).then((response: ViewAccountResponse) => {
         setNearBalance(response.result.amount);
-        updateUserTokenBalancesDisplay(fromToken, toToken);
+        updateUserTokenBalancesDisplay(userTokens, fromToken, toToken);
       }).catch(error => {
         console.error("Error fetching user's updated NEAR balance:", error);
       });
