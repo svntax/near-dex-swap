@@ -9,8 +9,9 @@ import { NearWalletSelector } from "./wallet-selector";
 import { Account, Optional } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
 import { byteArrayToUtf8String, getUserTokens, getBalance, viewAccount } from "@/lib/wallets/wallet-methods";
-import { calculateExchangeRate, createTransactionFromIntearTransaction, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
+import { createTransactionFromIntearTransaction, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
 import { Transaction } from "@hot-labs/near-connect/build/types/transactions";
+import { useDebounce } from "@/lib/useDebounce";
 
 interface NearIntentsQuote {
   message_to_sign: string; // TODO: Is this correct?
@@ -79,6 +80,8 @@ export default function SwapPanel() {
   const [slippage, setSlippage] = useState<number | "">(1);
   const [routeInfo, setRouteInfo] = useState<DexRouteResponse>();
   const [loadingRouteInfo, setLoadingRouteInfo] = useState<boolean>(false);
+  const [retryRouteFetch, setRetryRouteFetch] = useState<number>(0);
+  const debouncedRetryRouteFetch = useDebounce(retryRouteFetch, 750);
   const [calculatingFromAmount, setCalculatingFromAmount] = useState<boolean>(false);
   const [calculatingToAmount, setCalculatingToAmount] = useState<boolean>(false);
   const [lastEditedInput, setLastEditedInput] = useState<LastEditedInput>(LastEditedInput.AMOUNT_IN);
@@ -134,6 +137,19 @@ export default function SwapPanel() {
       console.error("Error fetching user's tokens:", error);
     });
   }, [account, nearBalance]);
+
+  // Fetch DEX routes only after debounced amounts updated
+  useEffect(() => {
+    if (retryRouteFetch > 0) {
+      setRetryRouteFetch(0);
+      if (lastEditedInput === LastEditedInput.AMOUNT_IN) {
+        getDexRoute(fromToken, toToken, fromAmount ? fromAmount : toAmount, fromAmount ? true : false, slippage || 0);
+      }
+      else {
+        getDexRoute(fromToken, toToken, toAmount ? toAmount : fromAmount, toAmount ? false : true, slippage || 0);
+      }
+    }
+  }, [debouncedRetryRouteFetch]);
 
   const handleSignOut = () => {
     console.log("User signed out!");
@@ -231,7 +247,13 @@ export default function SwapPanel() {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setFromAmount(value);
-      getDexRoute(fromToken, toToken, value, true, slippage || 0);
+      if(parseFloat(value) > 0){
+        getDexRoute(fromToken, toToken, value, true, slippage || 0);
+      }
+      else {
+        setToAmount("");
+        setRouteInfo(undefined);
+      }
     }
   };
 
@@ -240,7 +262,13 @@ export default function SwapPanel() {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setToAmount(value);
-      getDexRoute(fromToken, toToken, value, false, slippage || 0);
+      if(parseFloat(value) > 0){
+        getDexRoute(fromToken, toToken, value, false, slippage || 0);
+      }
+      else {
+        setFromAmount("");
+        setRouteInfo(undefined);
+      }
     }
   };
 
@@ -265,6 +293,8 @@ export default function SwapPanel() {
 
   // For use with button that swaps the two tokens' places
   const switchTokens = () => {
+    if (loadingRouteInfo || calculatingFromAmount || calculatingToAmount) return;
+
     updateUserTokenBalancesDisplay(userTokens, toToken, fromToken);
 
     const tempToken = fromToken;
@@ -417,6 +447,7 @@ export default function SwapPanel() {
           // Failed to find any routes
           // TODO: Retry with longer wait time?
           setRouteInfo(undefined);
+          setRetryRouteFetch(retryRouteFetch + 1);
           if (useFromAmount) {
             setToAmount("");
           }
@@ -426,13 +457,23 @@ export default function SwapPanel() {
         }
         else {
           setRouteInfo(routeData[0]);
+          if (retryRouteFetch === 0) {
+            // Retry at least once because of syncing issues
+            setRetryRouteFetch(retryRouteFetch + 1);
+          }
           if (useFromAmount) {
             const newDisplayAmount = Number(convertToDisplayUnit(routeData[0].estimated_amount.amount_out || "NaN", newToToken)).toFixed(6);
             setToAmount(newDisplayAmount);
+            if (parseFloat(routeData[0].estimated_amount.amount_out || "0") === 0 && parseFloat(fromAmount)){
+              setRetryRouteFetch(retryRouteFetch + 1);
+            }
           }
           else {
             const newDisplayAmount = Number(convertToDisplayUnit(routeData[0].estimated_amount.amount_in || "NaN", newFromToken)).toFixed(6);
             setFromAmount(newDisplayAmount);
+            if (parseFloat(routeData[0].estimated_amount.amount_in || "0") === 0 && parseFloat(toAmount) > 0){
+              setRetryRouteFetch(retryRouteFetch + 1);
+            }
           }
         }
       }
@@ -675,10 +716,10 @@ export default function SwapPanel() {
             handleConnectWallet();
           }
         }}
-        disabled={(swapInProgress || loadingRouteInfo || (isConnected && !routeInfo)) || (isConnected && !fromAmount) || (isConnected && Number(fromAmount) > fromTokenBalance)}
+        disabled={(swapInProgress || loadingRouteInfo || (isConnected && !routeInfo)) || (isConnected && !fromAmount) || (isConnected && Number(fromAmount) > fromTokenBalance && parseFloat(fromAmount) > 0)}
         className={`w-full mt-6 py-3 rounded-lg font-medium transition-colors ${
           isConnected
-            ? (!(swapInProgress || loadingRouteInfo) && routeInfo && fromAmount && (Number(fromAmount) <= fromTokenBalance) ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-blue-900 text-slate-500")
+            ? (!(swapInProgress || loadingRouteInfo) && routeInfo && fromAmount && (Number(fromAmount) <= fromTokenBalance && parseFloat(fromAmount) > 0) ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-blue-900 text-slate-500")
             : loadingRouteInfo ? "bg-blue-900 text-slate-500" : "bg-blue-500 hover:bg-blue-600 text-white"
         }`}
       >
@@ -686,7 +727,7 @@ export default function SwapPanel() {
           <LoadingSpinner />
         }
         {isConnected 
-          ? (fromAmount ?
+          ? (parseFloat(fromAmount) > 0 ?
               ((swapInProgress || loadingRouteInfo) ? "Processing..." : (Number(fromAmount) > fromTokenBalance ? "Not enough balance" : "Swap"))
             : "Enter an amount") 
           : (loadingRouteInfo ? "Processing..." : "Connect Wallet")}
