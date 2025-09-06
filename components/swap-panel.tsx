@@ -41,15 +41,19 @@ interface DexRouteResponse {
   deadline: string | null;
   has_slippage: boolean;
   estimated_amount: {
-    amount_out: string;
+    amount_out?: string;
+    amount_in?: string;
   };
   worst_case_amount: {
-    amount_out: string;
+    amount_out?: string;
+    amount_in?: string;
   };
   dex_id: string;
   execution_instructions: ExecutionInstruction[];
   needs_unwrap: boolean;
 }
+
+enum LastEditedInput { AMOUNT_IN, AMOUNT_OUT }
 
 // Hard-coded tokens to include on start (NEAR, USDC)
 const INITIAL_TOKENS: Token[] = [
@@ -75,6 +79,9 @@ export default function SwapPanel() {
   const [slippage, setSlippage] = useState<number>(1);
   const [routeInfo, setRouteInfo] = useState<DexRouteResponse>();
   const [loadingRouteInfo, setLoadingRouteInfo] = useState<boolean>(false);
+  const [calculatingFromAmount, setCalculatingFromAmount] = useState<boolean>(false);
+  const [calculatingToAmount, setCalculatingToAmount] = useState<boolean>(false);
+  const [lastEditedInput, setLastEditedInput] = useState<LastEditedInput>(LastEditedInput.AMOUNT_IN);
   const [swapInProgress, setSwapInProgress] = useState<boolean>(false);
   const [swapSuccess, setSwapSuccess] = useState<boolean>(false);
   const [swapFailVisible, setSwapFailVisible] = useState<boolean>(false);
@@ -124,11 +131,11 @@ export default function SwapPanel() {
     });
   }, [account, nearBalance]);
 
-  useEffect(() => {
+  /*useEffect(() => {
     if (fromToken && toToken) {
-      getDexRoute(fromToken, toToken); // Is this inefficient? Should avoid spamming on every amount change?
+      getDexRoute(fromToken, toToken, fromAmount ? true : false); // Is this inefficient? Should avoid spamming on every amount change?
     }
-  }, [fromToken, toToken, fromAmount, toAmount]);
+  }, [fromToken, toToken]);*/
 
   const handleSignOut = () => {
     console.log("User signed out!");
@@ -209,6 +216,7 @@ export default function SwapPanel() {
     setFromAmount("");
     setToAmount("");
     updateUserTokenBalancesDisplay(userTokens, token, toToken);
+    setLastEditedInput(LastEditedInput.AMOUNT_IN);
   };
 
   const handleToTokenSelect = (token: Token) => {
@@ -217,29 +225,34 @@ export default function SwapPanel() {
     setFromAmount("");
     setToAmount("");
     updateUserTokenBalancesDisplay(userTokens, fromToken, token);
+    setLastEditedInput(LastEditedInput.AMOUNT_OUT);
   };
 
   const handleFromAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLastEditedInput(LastEditedInput.AMOUNT_IN);
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setFromAmount(value);
-      if (value && !isNaN(Number(value)) || Number(value) <= 0) {
+      /*if (value && !isNaN(Number(value)) || Number(value) <= 0) {
         const rate = calculateExchangeRate(fromToken, toToken);
         const calculatedAmount = Number(value) * rate;
         setToAmount(Number(calculatedAmount).toFixed(6));
-      }
+      }*/
+      getDexRoute(fromToken, toToken, value, true);
     }
   };
 
   const handleToAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLastEditedInput(LastEditedInput.AMOUNT_OUT);
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setToAmount(value);
-      if (value && !isNaN(Number(value)) || Number(value) <= 0) {
+      /*if (value && !isNaN(Number(value)) || Number(value) <= 0) {
         const rate = calculateExchangeRate(toToken, fromToken);
         const calculatedAmount = Number(value) * rate;
         setFromAmount(Number(calculatedAmount).toFixed(6));
-      }
+      }*/
+      getDexRoute(fromToken, toToken, value, false);
     }
   };
 
@@ -261,6 +274,15 @@ export default function SwapPanel() {
     const tempAmount = fromAmount;
     setFromAmount(toAmount);
     setToAmount(tempAmount);
+
+    if (lastEditedInput === LastEditedInput.AMOUNT_IN) {
+      getDexRoute(toToken, fromToken, fromAmount, false);
+      setLastEditedInput(LastEditedInput.AMOUNT_OUT);
+    }
+    else {
+      getDexRoute(toToken, fromToken, toAmount, true);
+      setLastEditedInput(LastEditedInput.AMOUNT_IN);
+    }
   };
 
   const handleSwap = async () => {
@@ -347,9 +369,9 @@ export default function SwapPanel() {
     }
   };
 
-  const getDexRoute = async (newFromToken: Token, newToToken: Token) => {
+  const getDexRoute = async (newFromToken: Token, newToToken: Token, amountInput: string, useFromAmount: boolean) => {
     setLoadingRouteInfo(true);
-    if (!fromAmount || !toAmount || !newFromToken.id || !newToToken.id) {
+    if ((!fromAmount && !toAmount && !amountInput) || !newFromToken.id || !newToToken.id) {
       console.error("Missing required parameters for routing");
       setLoadingRouteInfo(false);
       setRouteInfo(undefined);
@@ -357,12 +379,18 @@ export default function SwapPanel() {
     }
   
     try {
-      const amountIn = convertToBaseUnit(fromAmount, newFromToken);
+      if (useFromAmount) {
+        setCalculatingToAmount(true);
+      }
+      else {
+        setCalculatingFromAmount(true);
+      }
+      const amountQuery = (useFromAmount ? `amount_in=${convertToBaseUnit(amountInput, newFromToken)}&` : `amount_out=${convertToBaseUnit(amountInput, newToToken)}&`)
       const response = await fetch(
         `https://router.intear.tech/route?` + 
         `token_in=${newFromToken.id}&` +
         `token_out=${newToToken.id}&` +
-        `amount_in=${amountIn}&` +
+        amountQuery +
         `max_wait_ms=1500&` +
         `slippage_type=Fixed&` +
         `slippage=${slippage/100}` +
@@ -376,17 +404,40 @@ export default function SwapPanel() {
       }
       
       const routeData: DexRouteResponse[] = await response.json();
-      if (!fromAmount || !toAmount || Number(fromAmount || "0") <= 0 || Number(toAmount || "0") <= 0) {
+      if ((!fromAmount && !toAmount && !amountInput) || (Number(fromAmount || "0") <= 0 && Number(toAmount || "0") <= 0 && Number(amountInput || ")") <= 0)) {
         setRouteInfo(undefined);
       }
       else {
-        setRouteInfo(routeData[0]);
+        if(routeData.length === 0){
+          // Failed to find any routes
+          // TODO: Retry with longer wait time?
+          setRouteInfo(undefined);
+          if (useFromAmount) {
+            setToAmount("");
+          }
+          else {
+            setFromAmount("");
+          }
+        }
+        else {
+          setRouteInfo(routeData[0]);
+          if (useFromAmount) {
+            const newDisplayAmount = Number(convertToDisplayUnit(routeData[0].estimated_amount.amount_out || "NaN", newToToken)).toFixed(6);
+            setToAmount(newDisplayAmount);
+          }
+          else {
+            const newDisplayAmount = Number(convertToDisplayUnit(routeData[0].estimated_amount.amount_in || "NaN", newFromToken)).toFixed(6);
+            setFromAmount(newDisplayAmount);
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching DEX route:", error);
       setRouteInfo(undefined);
     } finally {
       setLoadingRouteInfo(false);
+      setCalculatingFromAmount(false);
+      setCalculatingToAmount(false);
     }
   };
 
@@ -457,7 +508,7 @@ export default function SwapPanel() {
           <div className="relative flex-1">
             <input
               type="text"
-              value={fromAmount}
+              value={calculatingFromAmount ? "Loading..." : fromAmount}
               onChange={handleFromAmountChange}
               placeholder="0.0"
               className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none py-2"
@@ -524,7 +575,7 @@ export default function SwapPanel() {
           <div className="relative flex-1">
             <input
               type="text"
-              value={toAmount}
+              value={calculatingToAmount ? "Loading..." : toAmount}
               onChange={handleToAmountChange}
               placeholder="0.0"
               className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none py-2"
@@ -543,7 +594,14 @@ export default function SwapPanel() {
           <h2 className="text-white text-lg font-medium">{loadingRouteInfo ? <><LoadingSpinner /> {"Fetching best route..."}</> : "Route Info"}</h2>
           <button
             disabled={loadingRouteInfo}
-            onClick={() => getDexRoute(fromToken, toToken)}
+            onClick={() => {
+              if (lastEditedInput === LastEditedInput.AMOUNT_IN) {
+                getDexRoute(fromToken, toToken, fromAmount ? fromAmount : toAmount, fromAmount ? true : false);
+              }
+              else {
+                getDexRoute(fromToken, toToken, toAmount ? toAmount : fromAmount, toAmount ? false : true);
+              }
+            }}
             className="bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
           >
             Refresh
@@ -557,7 +615,20 @@ export default function SwapPanel() {
                 <span className="text-slate-400">DEX:</span> {routeInfo.dex_id || "N/A"}
               </div>
               <div className="text-slate-300 text-sm mb-2">
-                <span className="text-slate-400">Minimum Received:</span> {convertToDisplayUnit(routeInfo.worst_case_amount.amount_out || "0", toToken)} {toToken.symbol}
+                <p className="mt-3 text-slate-400">Estimated {routeInfo.estimated_amount.amount_out ? "Received" : "Spent"}</p> {
+                  (routeInfo.estimated_amount.amount_out ?
+                    Number(convertToDisplayUnit(routeInfo.estimated_amount.amount_out || "0", toToken)).toFixed(6)
+                  :
+                    Number(convertToDisplayUnit(routeInfo.estimated_amount.amount_in || "0", fromToken)).toFixed(6)
+                  )
+                } {lastEditedInput === LastEditedInput.AMOUNT_IN ? toToken.symbol : fromToken.symbol}
+                <p className="mt-3 text-slate-400">{routeInfo.estimated_amount.amount_out ? "Minimum Received" : "Maximum Spent"}</p> {
+                  (routeInfo.worst_case_amount.amount_out ?
+                    Number(convertToDisplayUnit(routeInfo.worst_case_amount.amount_out || "0", toToken)).toFixed(6)
+                  :
+                    Number(convertToDisplayUnit(routeInfo.worst_case_amount.amount_in || "0", fromToken)).toFixed(6)
+                  )
+                } {lastEditedInput === LastEditedInput.AMOUNT_IN ? toToken.symbol : fromToken.symbol}
               </div>
             </>
           ) : (
