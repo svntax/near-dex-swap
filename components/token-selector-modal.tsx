@@ -32,7 +32,7 @@ export const TokenSelectorModal = ({
         const data: TokensApiResponse = await response.json();
         
         // Extract token data from the response to match Token interface
-        const tokensList: Token[] = data.map((tokenInfo) => ({
+        let tokensList: Token[] = data.map((tokenInfo) => ({
           id: tokenInfo.account_id,
           name: tokenInfo.metadata.name,
           symbol: tokenInfo.metadata.symbol,
@@ -40,6 +40,23 @@ export const TokenSelectorModal = ({
           decimals: tokenInfo.metadata.decimals,
           icon: tokenInfo.metadata.icon
         }));
+        // Combine the initial list with the search results, and remove duplicates just in case
+        tokensList = initialTokensList.concat(tokensList.filter(token =>
+            !initialTokensList.some(initialToken => initialToken.id === token.id)
+        ));
+
+        // Now filter tokens by search
+        if (!search.trim()) {
+          tokensList = tokensList.slice(0, 50); // Results can be very long, so slice the first 50
+        }
+        else {
+          const searchLower = search.toLowerCase().trim();
+          const filteredList = tokensList.filter(token => 
+            token.symbol.toLowerCase().includes(searchLower) ||
+            token.name.toLowerCase().includes(searchLower)
+          );
+          tokensList = filteredList;
+        }
 
         // Now get the price for native NEAR
         // Since wNEAR is 1:1, just use it for the price data
@@ -55,10 +72,10 @@ export const TokenSelectorModal = ({
           }
         }
         
-        setTokens(initialTokensList.concat(tokensList));
+        setTokens(tokensList);
       } catch (error) {
         console.error("Failed to fetch tokens:", error);
-        setTokens([]);
+        setTokens(initialTokensList);
       }
     };
 
@@ -66,20 +83,10 @@ export const TokenSelectorModal = ({
       fetchTokens();
     }
   }, [isOpen, search]);
-
-  const filteredTokens = useMemo(() => {
-    if (!search.trim()) {
-      return tokens.slice(50); // Results can be very long, so slice the first 50
-    }
-    
-    const searchLower = search.toLowerCase().trim();
-    return tokens.filter(token => 
-      token.symbol.toLowerCase().includes(searchLower) ||
-      token.name.toLowerCase().includes(searchLower)
-    );
-  }, [tokens, search]);
-
-  if (!isOpen) return null;
+  
+  if (!isOpen){
+    return null;
+  }
 
   return (
     <div 
@@ -111,8 +118,8 @@ export const TokenSelectorModal = ({
         </div>
         
         <div className="overflow-y-auto flex-grow">
-          {filteredTokens.length > 0 ? (
-            filteredTokens.map(token => (
+          {tokens.length > 0 ? (
+            tokens.map(token => (
               <button
                 key={token.id}
                 onClick={() => {
@@ -123,7 +130,7 @@ export const TokenSelectorModal = ({
               >
                 {token.icon && token.icon.startsWith("data:image/") ?
                   <Image
-                    src={ token.icon}
+                    src={token.icon}
                     alt={token.name}
                     width={32}
                     height={32}
@@ -133,7 +140,7 @@ export const TokenSelectorModal = ({
                   <div className="bg-orange-500 rounded-full w-[32px] h-[32px] m-3 py-1 flex align-center justify-center">{token.symbol.charAt(0)}</div>
                 }
                 
-                <div>
+                <div className="wrap-anywhere">
                   <div className="font-medium text-white">{token.symbol}</div>
                   <div className="text-xs text-slate-300">{token.name}</div>
                   {token.id !== "near" && <div className="text-xs text-slate-400">{token.id}</div>}
