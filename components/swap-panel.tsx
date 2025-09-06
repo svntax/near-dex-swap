@@ -85,6 +85,10 @@ export default function SwapPanel() {
   const [swapInProgress, setSwapInProgress] = useState<boolean>(false);
   const [swapSuccess, setSwapSuccess] = useState<boolean>(false);
   const [swapFailVisible, setSwapFailVisible] = useState<boolean>(false);
+  const [finalSwapFromAmount, setFinalSwapFromAmount] = useState<string>("");
+  const [finalSwapFromToken, setFinalSwapFromToken] = useState<Token>();
+  const [finalSwapToAmount, setFinalSwapToAmount] = useState<string>("");
+  const [finalSwapToToken, setFinalSwapToToken] = useState<Token>();
 
   useEffect(() => {
     // Get the price of native NEAR here using wNEAR
@@ -316,7 +320,7 @@ export default function SwapPanel() {
         }
         else if (transaction.NearTransaction && !transaction.IntentsQuote) {
           // Construct the function call transaction from Intear's FunctionCall format
-          const formattedTx: Transaction = createTransactionFromIntearTransaction(transaction.NearTransaction, account.accountId, transaction.NearTransaction.receiver_id);
+          const formattedTx = createTransactionFromIntearTransaction(transaction.NearTransaction, account.accountId, transaction.NearTransaction.receiver_id);
           transactionsToSignAndSend.push(formattedTx);
         }
       });
@@ -347,8 +351,13 @@ export default function SwapPanel() {
           }]
         });
       }
+
       setSwapFailVisible(false);
       setSwapSuccess(true);
+      setFinalSwapFromAmount(fromAmount.toString());
+      setFinalSwapFromToken(fromToken);
+      setFinalSwapToAmount(toAmount.toString());
+      setFinalSwapToToken(toToken);
 
       // Update balances data
       viewAccount(account.accountId).then((response: ViewAccountResponse) => {
@@ -452,7 +461,7 @@ export default function SwapPanel() {
         <div className="mb-6 p-4 bg-green-900 border border-green-600 rounded-lg text-white">
           <h3 className="text-md font-semibold">Swap submitted!</h3>
           <p className="mt-2 text-sm">
-            <span>{parseFloat(Number(fromAmount).toFixed(6))} {fromToken.symbol}</span> for <span>{parseFloat(Number(toAmount).toFixed(6))} {toToken.symbol}</span>.
+            <span>{parseFloat(Number(finalSwapFromAmount).toFixed(6))} {finalSwapFromToken?.symbol}</span> for <span>{parseFloat(Number(finalSwapToAmount).toFixed(6))} {finalSwapToToken?.symbol}</span>.
           </p>
         </div>
       ) : (swapFailVisible && (
@@ -465,7 +474,7 @@ export default function SwapPanel() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>From</span>
-          <span>Balance: {fromToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, fromToken)).toFixed(6)) : fromTokenBalance} {fromToken.symbol}</span>
+          <span>Balance: {fromToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, fromToken)).toFixed(6)) : fromTokenBalance.toFixed(6)} {fromToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
@@ -531,7 +540,7 @@ export default function SwapPanel() {
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>To</span>
-          <span>Balance: {toToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, toToken)).toFixed(6)) : toTokenBalance} {toToken.symbol}</span>
+          <span>Balance: {toToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, toToken)).toFixed(6)) : toTokenBalance.toFixed(6)} {toToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
