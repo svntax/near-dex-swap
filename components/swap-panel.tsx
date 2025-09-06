@@ -76,7 +76,7 @@ export default function SwapPanel() {
   const [toTokenBalance, setToTokenBalance] = useState<number>(0);
   const [showFromDropdown, setShowFromDropdown] = useState<boolean>(false);
   const [showToDropdown, setShowToDropdown] = useState<boolean>(false);
-  const [slippage, setSlippage] = useState<number>(1);
+  const [slippage, setSlippage] = useState<number | "">(1);
   const [routeInfo, setRouteInfo] = useState<DexRouteResponse>();
   const [loadingRouteInfo, setLoadingRouteInfo] = useState<boolean>(false);
   const [calculatingFromAmount, setCalculatingFromAmount] = useState<boolean>(false);
@@ -130,12 +130,6 @@ export default function SwapPanel() {
       console.error("Error fetching user's tokens:", error);
     });
   }, [account, nearBalance]);
-
-  /*useEffect(() => {
-    if (fromToken && toToken) {
-      getDexRoute(fromToken, toToken, fromAmount ? true : false); // Is this inefficient? Should avoid spamming on every amount change?
-    }
-  }, [fromToken, toToken]);*/
 
   const handleSignOut = () => {
     console.log("User signed out!");
@@ -233,12 +227,7 @@ export default function SwapPanel() {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setFromAmount(value);
-      /*if (value && !isNaN(Number(value)) || Number(value) <= 0) {
-        const rate = calculateExchangeRate(fromToken, toToken);
-        const calculatedAmount = Number(value) * rate;
-        setToAmount(Number(calculatedAmount).toFixed(6));
-      }*/
-      getDexRoute(fromToken, toToken, value, true);
+      getDexRoute(fromToken, toToken, value, true, slippage || 0);
     }
   };
 
@@ -247,19 +236,26 @@ export default function SwapPanel() {
     const value = e.target.value;
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setToAmount(value);
-      /*if (value && !isNaN(Number(value)) || Number(value) <= 0) {
-        const rate = calculateExchangeRate(toToken, fromToken);
-        const calculatedAmount = Number(value) * rate;
-        setFromAmount(Number(calculatedAmount).toFixed(6));
-      }*/
-      getDexRoute(fromToken, toToken, value, false);
+      getDexRoute(fromToken, toToken, value, false, slippage || 0);
     }
   };
 
-  const handleSlippageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value && !isNaN(Number(value))) {
-      setSlippage(Number(value));
+  const handleSlippageChange = (newValue: number, triggerDexRouteFetch: boolean) => {
+    if (newValue) {
+      newValue = Math.max(0, Math.min(newValue, 100));
+      setSlippage(newValue);
+      if (triggerDexRouteFetch) {
+        getDexRoute(fromToken, toToken, (lastEditedInput === LastEditedInput.AMOUNT_IN ? fromAmount : toAmount), lastEditedInput === LastEditedInput.AMOUNT_IN, newValue);
+      }
+    }
+    else {
+      if (triggerDexRouteFetch) {
+        setSlippage(0);
+        getDexRoute(fromToken, toToken, (lastEditedInput === LastEditedInput.AMOUNT_IN ? fromAmount : toAmount), lastEditedInput === LastEditedInput.AMOUNT_IN, newValue);
+      }
+      else {
+        setSlippage("");
+      }
     }
   };
 
@@ -276,11 +272,11 @@ export default function SwapPanel() {
     setToAmount(tempAmount);
 
     if (lastEditedInput === LastEditedInput.AMOUNT_IN) {
-      getDexRoute(toToken, fromToken, fromAmount, false);
+      getDexRoute(toToken, fromToken, fromAmount, false, slippage || 0);
       setLastEditedInput(LastEditedInput.AMOUNT_OUT);
     }
     else {
-      getDexRoute(toToken, fromToken, toAmount, true);
+      getDexRoute(toToken, fromToken, toAmount, true, slippage || 0);
       setLastEditedInput(LastEditedInput.AMOUNT_IN);
     }
   };
@@ -369,7 +365,7 @@ export default function SwapPanel() {
     }
   };
 
-  const getDexRoute = async (newFromToken: Token, newToToken: Token, amountInput: string, useFromAmount: boolean) => {
+  const getDexRoute = async (newFromToken: Token, newToToken: Token, amountInput: string, useFromAmount: boolean, newSlippage: number) => {
     setLoadingRouteInfo(true);
     if ((!fromAmount && !toAmount && !amountInput) || !newFromToken.id || !newToToken.id) {
       console.error("Missing required parameters for routing");
@@ -393,7 +389,7 @@ export default function SwapPanel() {
         amountQuery +
         `max_wait_ms=1500&` +
         `slippage_type=Fixed&` +
-        `slippage=${slippage/100}` +
+        `slippage=${newSlippage/100}` +
         ((account && account.accountId) ? `&trader_account_id=${account.accountId}` : "")
         // TODO: signing_public_key for NEAR Intents, for now remove intents from dex list
         + `&dexes=Rhea,RheaDcl,Veax,Aidols,GraFun,Jumpdefi,Wrap,MetaPool,Linear`
@@ -596,16 +592,37 @@ export default function SwapPanel() {
             disabled={loadingRouteInfo}
             onClick={() => {
               if (lastEditedInput === LastEditedInput.AMOUNT_IN) {
-                getDexRoute(fromToken, toToken, fromAmount ? fromAmount : toAmount, fromAmount ? true : false);
+                getDexRoute(fromToken, toToken, fromAmount ? fromAmount : toAmount, fromAmount ? true : false, slippage || 0);
               }
               else {
-                getDexRoute(fromToken, toToken, toAmount ? toAmount : fromAmount, toAmount ? false : true);
+                getDexRoute(fromToken, toToken, toAmount ? toAmount : fromAmount, toAmount ? false : true, slippage || 0);
               }
             }}
             className="bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
           >
             Refresh
           </button>
+        </div>
+
+        <div className="mb-6">
+          <div className="text-slate-300 text-sm mb-1">Slippage</div>
+          <div className="flex items-center">
+            <input 
+              type="number" 
+              min="0" 
+              max="100" 
+              step="0.1" 
+              value={slippage}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                handleSlippageChange(Number(e.target.value), false);
+              }}
+              onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                handleSlippageChange(Number(e.target.value), true);
+              }}
+              className="bg-slate-700 text-white rounded px-2 py-1 w-20 border border-slate-600"
+            />
+            <span className="text-slate-300 ml-2">%</span>
+          </div>
         </div>
         
         {loadingRouteInfo ? <p className="text-slate-300 text-sm">Loading...</p> : 
@@ -636,21 +653,7 @@ export default function SwapPanel() {
           )
         }
         
-        <div className="mt-3">
-          <div className="text-slate-300 text-sm mb-1">Slippage</div>
-          <div className="flex items-center">
-            <input 
-              type="number" 
-              min="0" 
-              max="100" 
-              step="0.1" 
-              value={slippage} 
-              onChange={handleSlippageChange}
-              className="bg-slate-700 text-white rounded px-2 py-1 w-20 border border-slate-600"
-            />
-            <span className="text-slate-300 ml-2">%</span>
-          </div>
-        </div>
+        
       </div>
 
       {/* Swap Button */}
