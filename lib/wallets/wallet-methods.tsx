@@ -15,6 +15,23 @@ export const getUserTokens = async (accountId: string): Promise<UserTokenInfo[]>
   }
 };
 
+export const getTransactionsHistory = async (accountId: string): Promise<UserTx[]> => {
+  const url = `https://wallet-history-service.intear.tech/api/transactions/${accountId}`;
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data: UserTx[] = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching user tokens:", error);
+    throw error;
+  }
+};
+
 export const getBalance = async (accountId: string, contractId: string): Promise<GetBalanceResponse> => {
   const url = "https://rpc.intea.rs/"; // Should probably add fallbacks?
   const args = {

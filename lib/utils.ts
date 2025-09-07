@@ -59,3 +59,62 @@ export const createTransactionFromIntearTransaction = (tx: NearTransactionIntear
     actions: actions
   }
 }
+
+export const nanosecondsToDateString = (nanoseconds: number, format: "DATETIME" | "RECENT"): string => {
+  const milliseconds = Math.floor(Number(nanoseconds) / 1000000);
+  const date = new Date(milliseconds);
+  const now = new Date();
+
+  if (format === "DATETIME") {
+    // Format as YYYY-MM-DD HH:mm:ss in local time
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  if (format === "RECENT") {
+    // Format as relative time (how long ago)
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    // Less than a minute ago
+    if (diffSeconds < 60) {
+        return `${diffSeconds} seconds ago`;
+    }
+    
+    // Less than an hour ago
+    if (diffMinutes < 60) {
+        const remainingSeconds = diffSeconds % 60;
+        if (remainingSeconds > 0) {
+            return `${diffMinutes} minutes ${remainingSeconds} seconds ago`;
+        }
+        return `${diffMinutes} minutes ago`;
+    }
+    
+    // Less than a day ago
+    if (diffHours < 24) {
+        const remainingMinutes = diffMinutes % 60;
+        if (remainingMinutes > 0) {
+            return `${diffHours} hours ${remainingMinutes} minutes ago`;
+        }
+        return `${diffHours} hours ago`;
+    }
+    
+    // More than a day
+    const remainingHours = diffHours % 24;
+    if (remainingHours > 0) {
+        return `${diffDays} days ${remainingHours} hours ago`;
+    }
+    return `${diffDays} days ago`;
+  }
+
+  return "Error";
+};

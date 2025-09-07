@@ -37,6 +37,23 @@ interface UserTokenInfo {
   token: TokenInfo;
 }
 
+interface UserTx {
+  block_timestamp_nanosec: number;
+  transaction: {
+    transaction: {
+      signer_id: string;
+      receiver_id: string;
+      signature: string;
+      hash: string;
+    },
+    transaction_outcome: {
+      block_hash: string;
+      id: string;
+    },
+    final_execution_status: string;
+  }
+}
+
 interface NearAccount {
   id: string;
   network: "testnet" | "mainnet";
