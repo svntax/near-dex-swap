@@ -1,3 +1,9 @@
+const RPC_ENDPOINTS = [
+  "https://rpc.intea.rs/",
+  "https://rpc.mainnet.fastnear.com/",
+  "https://rpc.web4.near.page/",
+];
+
 export const getUserTokens = async (accountId: string): Promise<UserTokenInfo[]> => {
   const url = `https://prices.intear.tech/get-user-tokens?account_id=${accountId}`;
   try {
@@ -33,7 +39,6 @@ export const getTransactionsHistory = async (accountId: string): Promise<UserTx[
 };
 
 export const getBalance = async (accountId: string, contractId: string): Promise<GetBalanceResponse> => {
-  const url = "https://rpc.intea.rs/"; // Should probably add fallbacks?
   const args = {
     account_id: accountId
   };
@@ -51,25 +56,33 @@ export const getBalance = async (accountId: string, contractId: string): Promise
     }
   };
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  for(let i = 0; i < RPC_ENDPOINTS.length; i++){
+    const url = RPC_ENDPOINTS[i];
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching token balance:", error);
+      if (i === RPC_ENDPOINTS.length - 1) {
+        // Ran out of retries
+        throw error;
+      }
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching token balance:", error);
-    throw error;
   }
+
+  throw new Error("Failed to fetch user's token balance.");
 };
 
 export const byteArrayToUtf8String = (byteArray: number[]): string => {
@@ -78,7 +91,6 @@ export const byteArrayToUtf8String = (byteArray: number[]): string => {
 };
 
 export const viewAccount = async (accountId: string): Promise<ViewAccountResponse> => {
-  const url = "https://rpc.intea.rs/";
   const requestBody = {
     jsonrpc: "2.0",
     id: "dontcare",
@@ -90,23 +102,31 @@ export const viewAccount = async (accountId: string): Promise<ViewAccountRespons
     }
   };
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  for(let i = 0; i < RPC_ENDPOINTS.length; i++){
+    const url = RPC_ENDPOINTS[i];
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error viewing user's account:", error);
+      if (i === RPC_ENDPOINTS.length - 1) {
+        // Ran out of retries
+        throw error;
+      }
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error viewing user's account:", error);
-    throw error;
   }
+
+  throw new Error("Failed to fetch user's account data.");
 };
