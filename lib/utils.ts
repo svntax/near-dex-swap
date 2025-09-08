@@ -87,14 +87,14 @@ export const nanosecondsToDateString = (nanoseconds: number, format: "DATETIME" 
     
     // Less than a minute ago
     if (diffSeconds < 60) {
-        return `${diffSeconds} seconds ago`;
+        return `${diffSeconds} second${diffSeconds === 1 ? "" : "s"} ago`;
     }
     
     // Less than an hour ago
     if (diffMinutes < 60) {
         const remainingSeconds = diffSeconds % 60;
         if (remainingSeconds > 0) {
-            return `${diffMinutes} minutes ${remainingSeconds} seconds ago`;
+            return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ${remainingSeconds} second${remainingSeconds === 1 ? "" : "s"} ago`;
         }
         return `${diffMinutes} minutes ago`;
     }
@@ -103,17 +103,17 @@ export const nanosecondsToDateString = (nanoseconds: number, format: "DATETIME" 
     if (diffHours < 24) {
         const remainingMinutes = diffMinutes % 60;
         if (remainingMinutes > 0) {
-            return `${diffHours} hours ${remainingMinutes} minutes ago`;
+            return `${diffHours} hour${diffHours === 1 ? "" : "s"} ${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"} ago`;
         }
-        return `${diffHours} hours ago`;
+        return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
     }
     
     // More than a day
     const remainingHours = diffHours % 24;
     if (remainingHours > 0) {
-        return `${diffDays} days ${remainingHours} hours ago`;
+        return `${diffDays} day${diffDays === 1 ? "" : "s"} ${remainingHours} hour${remainingHours === 1 ? "" : "s"} ago`;
     }
-    return `${diffDays} days ago`;
+    return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
   }
 
   return "Error";
