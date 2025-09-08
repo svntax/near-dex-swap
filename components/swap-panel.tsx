@@ -526,7 +526,7 @@ export default function SwapPanel({
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>From</span>
-          <span>Balance: {fromToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, fromToken)).toFixed(6)) : fromTokenBalance.toFixed(6)} {fromToken.symbol}</span>
+          <span>Balance: {fromToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, fromToken)).toFixed(6)) : parseFloat(fromTokenBalance.toFixed(6))} {fromToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
@@ -592,7 +592,7 @@ export default function SwapPanel({
       <div className="bg-slate-800 rounded-lg p-4">
         <div className="flex justify-between text-sm text-slate-400 mb-2">
           <span>To</span>
-          <span>Balance: {toToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, toToken)).toFixed(6)) : toTokenBalance.toFixed(6)} {toToken.symbol}</span>
+          <span>Balance: {toToken.id === "near" ? parseFloat(Number(convertToDisplayUnit(nearBalance, toToken)).toFixed(6)) : parseFloat(toTokenBalance.toFixed(6))} {toToken.symbol}</span>
         </div>
 
         <div className="flex items-center mb-2">
