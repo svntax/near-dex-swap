@@ -12,6 +12,7 @@ import { byteArrayToUtf8String, getUserTokens, getBalance, viewAccount } from "@
 import { createTransactionFromIntearTransaction, convertToBaseUnit, convertToDisplayUnit } from "@/lib/utils";
 import { Transaction } from "@hot-labs/near-connect/build/types/transactions";
 import { useDebounce } from "@/lib/useDebounce";
+import { RefreshIcon } from "./refresh-icon";
 
 interface NearIntentsQuote {
   message_to_sign: string; // TODO: Is this correct?
@@ -647,9 +648,9 @@ export default function SwapPanel({
       {/* Swap Info Section */}
       <div className="bg-slate-800 rounded-lg p-4 my-4">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-white text-lg font-medium">{loadingRouteInfo ? <><LoadingSpinner /> {"Fetching best route..."}</> : "Route Info"}</h2>
+          <h2 className="text-white text-lg font-medium">{loadingRouteInfo ? <><LoadingSpinner extraClasses="mr-2 mb-1" /> {"Fetching best route..."}</> : "Route Info"}</h2>
           <button
-            disabled={loadingRouteInfo}
+            disabled={loadingRouteInfo || (!fromAmount && !toAmount)}
             onClick={() => {
               if (lastEditedInput === LastEditedInput.AMOUNT_IN) {
                 getDexRoute(fromToken, toToken, fromAmount ? fromAmount : toAmount, fromAmount ? true : false, slippage || 0);
@@ -658,10 +659,12 @@ export default function SwapPanel({
                 getDexRoute(fromToken, toToken, toAmount ? toAmount : fromAmount, toAmount ? false : true, slippage || 0);
               }
             }}
-            className="bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
+            className={`bg-blue-900 rounded-lg p-2 border-2 border-blue-800 transition-colors text-white text-sm ${loadingRouteInfo || (!fromAmount && !toAmount) ? "bg-blue-950 border-slate-900" : "cursor-pointer hover:border-blue-600 hover:bg-blue-600"}`}
           >
-            Refresh
-          </button>
+            <div className="h-6 w-6 grid">
+              {loadingRouteInfo ? <LoadingSpinner extraClasses="justify-self-center align-self-center ml-[1px] mt-[1px]" /> : <RefreshIcon />}
+            </div>
+          </button> 
         </div>
 
         <div className="mb-6">

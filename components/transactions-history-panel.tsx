@@ -8,6 +8,7 @@ import { Account } from "@hot-labs/near-connect/build/types/wallet";
 import { nearConnector } from "@/lib/wallets/selectors";
 import { getTransactionsHistory } from "@/lib/wallets/wallet-methods";
 import { nanosecondsToDateString } from "@/lib/utils";
+import { RefreshIcon } from "./refresh-icon";
 
 interface TransactionsHistoryPanelProps {
   account: Account | undefined;
@@ -77,9 +78,14 @@ export default function TransactionsHistoryPanel({
           <h2 className="text-xl font-bold text-white py-2">Transaction History</h2>
           <span className="text-sm">{account ? account.accountId : "Not signed in"}</span>
         </div>
-        <button className="cursor-pointer w-[70px] h-[40px] flex justify-center bg-blue-900 rounded-lg p-2 border-2 border-blue-800 hover:border-blue-600 hover:bg-blue-600 transition-colors text-white text-sm"
-        onClick={fetchTransactions}>
-          {loadingTransactions ? <LoadingSpinner /> : "Refresh"}
+        <button
+          disabled={loadingTransactions || !account}
+          className={`bg-blue-900 rounded-lg p-2 border-2 border-blue-800 transition-colors text-white text-sm ${loadingTransactions || !account ? "bg-blue-950 border-slate-900" : "cursor-pointer hover:border-blue-600 hover:bg-blue-600"}`}
+          onClick={fetchTransactions}
+        >
+          <div className="h-6 w-6">
+            {loadingTransactions ? <LoadingSpinner extraClasses="justify-self-center align-self-center ml-[1px] mt-[1px]" /> : <RefreshIcon />}
+          </div>
         </button>
       </div>
 

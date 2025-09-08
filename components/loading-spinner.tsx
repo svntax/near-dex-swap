@@ -1,8 +1,11 @@
-export const LoadingSpinner = () => {
+interface LoadingSpinnerProps {
+  extraClasses?: string;
+}
+export const LoadingSpinner = ({extraClasses}: LoadingSpinnerProps) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      className={`inline mr-2 mb-1 size-5 animate-spin ...`}
+      className={`inline size-5 animate-spin ${extraClasses || ""}`}
       viewBox="0 0 24 24"
       width="24" height="24"
       fill="none" stroke="currentColor"
