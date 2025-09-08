@@ -6,6 +6,8 @@ import TransactionsHistoryPanel from "@/components/transactions-history-panel";
 import Image from "next/image";
 import { Account } from "@hot-labs/near-connect/build/types/wallet";
 import { NearWallet } from "@hot-labs/near-connect";
+import { HistoryIcon } from "@/components/history-icon";
+import { SwapIcon } from "@/components/swap-icon";
 
 export default function Home() {
   const [account, setAccount] = useState<Account>();
@@ -22,24 +24,30 @@ export default function Home() {
         <div className="border-b border-slate-700 w-full">
           <div className="flex">
             <button
-              className={`cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
+              className={`flex flex-col justify-end cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
                 activeTab === 0
                   ? "text-blue-400 border-b-2 border-blue-400"
                   : "text-slate-400 hover:text-slate-300"
               }`}
               onClick={() => setActiveTab(0)}
             >
-              Swap
+              <div className="flex justify-center gap-2">
+                <SwapIcon stroke={activeTab === 0 ? "#51a2ff" : "white"} />
+                Swap
+              </div>
             </button>
             <button
-              className={`cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
+              className={`flex flex-col justify-end cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
                 activeTab === 1
                   ? "text-blue-400 border-b-2 border-blue-400"
                   : "text-slate-400 hover:text-slate-300"
               }`}
               onClick={() => setActiveTab(1)}
             >
-              Transactions
+              <div className="flex justify-center gap-2">
+                <HistoryIcon fill={activeTab === 1 ? "#51a2ff" : "white"} />
+                History
+              </div>
             </button>
           </div>
         </div>
