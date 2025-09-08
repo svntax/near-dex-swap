@@ -242,6 +242,7 @@ export default function SwapPanel({
     setToAmount("");
     updateUserTokenBalancesDisplay(userTokens, token, toToken);
     setLastEditedInput(LastEditedInput.AMOUNT_IN);
+    setRouteInfo(undefined);
   };
 
   const handleToTokenSelect = (token: Token) => {
@@ -251,6 +252,7 @@ export default function SwapPanel({
     setToAmount("");
     updateUserTokenBalancesDisplay(userTokens, fromToken, token);
     setLastEditedInput(LastEditedInput.AMOUNT_OUT);
+    setRouteInfo(undefined);
   };
 
   const handleFromAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
