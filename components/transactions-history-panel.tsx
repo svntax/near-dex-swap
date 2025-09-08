@@ -80,11 +80,11 @@ export default function TransactionsHistoryPanel({
         </div>
         <button
           disabled={loadingTransactions || !account}
-          className={`bg-blue-900 rounded-lg p-2 border-2 border-blue-800 transition-colors text-white text-sm ${loadingTransactions || !account ? "bg-blue-950 border-slate-900" : "cursor-pointer hover:border-blue-600 hover:bg-blue-600"}`}
+          className={`bg-blue-900 rounded-lg p-2 transition-colors text-white text-sm ${loadingTransactions || !account ? "bg-blue-950" : "cursor-pointer hover:bg-blue-600"}`}
           onClick={fetchTransactions}
         >
           <div className="h-6 w-6">
-            {loadingTransactions ? <LoadingSpinner extraClasses="justify-self-center align-self-center ml-[1px] mt-[1px]" /> : <RefreshIcon />}
+            {loadingTransactions ? <LoadingSpinner extraClasses="justify-self-center align-self-center ml-[1px] mt-[1px]" /> : <RefreshIcon className={loadingTransactions || !account ? "fill-slate-600" : "fill-white"} />}
           </div>
         </button>
       </div>
@@ -93,7 +93,7 @@ export default function TransactionsHistoryPanel({
       <div className="overflow-y-auto flex-grow rounded-lg">
         {loadingTransactions ? (
           <div className="text-center py-8 text-slate-400">
-            <LoadingSpinner />Loading...
+            <LoadingSpinner extraClasses="mr-2" />Loading...
           </div>
         )
         :

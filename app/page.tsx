@@ -24,7 +24,7 @@ export default function Home() {
         <div className="border-b border-slate-700 w-full">
           <div className="flex">
             <button
-              className={`flex flex-col justify-end cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
+              className={`group flex flex-col justify-end cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
                 activeTab === 0
                   ? "text-blue-400 border-b-2 border-blue-400"
                   : "text-slate-400 hover:text-slate-300"
@@ -32,12 +32,12 @@ export default function Home() {
               onClick={() => setActiveTab(0)}
             >
               <div className="flex justify-center gap-2">
-                <SwapIcon stroke={activeTab === 0 ? "#51a2ff" : "white"} />
+                <SwapIcon className={activeTab === 0 ? "stroke-blue-400" : "stroke-slate-400 group-hover:stroke-slate-300"} />
                 Swap
               </div>
             </button>
             <button
-              className={`flex flex-col justify-end cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
+              className={`group flex flex-col justify-end cursor-pointer flex-1 py-3 text-center font-medium transition-colors ${
                 activeTab === 1
                   ? "text-blue-400 border-b-2 border-blue-400"
                   : "text-slate-400 hover:text-slate-300"
@@ -45,7 +45,7 @@ export default function Home() {
               onClick={() => setActiveTab(1)}
             >
               <div className="flex justify-center gap-2">
-                <HistoryIcon fill={activeTab === 1 ? "#51a2ff" : "white"} />
+                <HistoryIcon className={activeTab === 1 ? "fill-blue-400" : "fill-slate-400 group-hover:fill-slate-300"} />
                 History
               </div>
             </button>

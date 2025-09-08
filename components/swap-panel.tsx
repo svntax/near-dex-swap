@@ -659,10 +659,10 @@ export default function SwapPanel({
                 getDexRoute(fromToken, toToken, toAmount ? toAmount : fromAmount, toAmount ? false : true, slippage || 0);
               }
             }}
-            className={`bg-blue-900 rounded-lg p-2 border-2 border-blue-800 transition-colors text-white text-sm ${loadingRouteInfo || (!fromAmount && !toAmount) ? "bg-blue-950 border-slate-900" : "cursor-pointer hover:border-blue-600 hover:bg-blue-600"}`}
+            className={`bg-slate-700 rounded-lg p-2 transition-colors text-white text-sm ${loadingRouteInfo || (!fromAmount && !toAmount) ? "bg-blue-950 border-slate-900" : "cursor-pointer hover:bg-slate-600"}`}
           >
             <div className="h-6 w-6 grid">
-              {loadingRouteInfo ? <LoadingSpinner extraClasses="justify-self-center align-self-center ml-[1px] mt-[1px]" /> : <RefreshIcon />}
+              {loadingRouteInfo ? <LoadingSpinner extraClasses="justify-self-center align-self-center ml-[1px] mt-[1px]" /> : <RefreshIcon className={loadingRouteInfo || (!fromAmount && !toAmount) ? "fill-slate-600" : "fill-white"} />}
             </div>
           </button> 
         </div>
