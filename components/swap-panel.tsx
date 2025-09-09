@@ -501,9 +501,9 @@ export default function SwapPanel({
   };
 
   return (
-    <div className="w-full min-h-[726px] bg-slate-900 rounded-lg p-6">
+    <div className="w-full min-h-[726px] bg-slate-900 rounded-lg py-6 px-4 sm:px-6">
       <div className="flex justify-between mb-6 items-center">
-        <h2 className="text-xl font-bold text-white py-2">Swap</h2>
+        <h2 className="text-xl font-bold text-white py-0 sm:py-2">Swap</h2>
         <div className="text-right">
           <NearWalletSelector className="text-sm text-blue-400 hover:text-blue-300" signInCallback={handleSignIn} signOutCallback={handleSignOut}/>
           {account && <span className="block text-white text-sm mb-1">{account.accountId}</span>}
@@ -535,7 +535,7 @@ export default function SwapPanel({
           <div className="relative">
             <button
               onClick={() => setShowFromDropdown(!showFromDropdown)}
-              className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 rounded-lg px-4 py-2 mr-2 transition-colors border-slate-700 border-2 hover:border-slate-600"
+              className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 mr-2 transition-colors border-slate-700 border-2 hover:border-slate-600"
             >
               {/* Token icon or solid-color bg + letter if not found */}
               {fromToken.icon && fromToken.icon.startsWith("data:image/") ?
@@ -570,7 +570,7 @@ export default function SwapPanel({
               value={calculatingFromAmount ? "Loading..." : fromAmount}
               onChange={handleFromAmountChange}
               placeholder="0.0"
-              className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none py-2"
+              className="w-full bg-slate-900 rounded-lg py-2 pr-2 text-xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none"
             />
           </div>
         </div>
@@ -601,7 +601,7 @@ export default function SwapPanel({
           <div className="relative">
             <button
               onClick={() => setShowToDropdown(!showToDropdown)}
-              className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 rounded-lg px-4 py-2 mr-2 transition-colors border-slate-700 border-2 hover:border-slate-600"
+              className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 mr-2 transition-colors border-slate-700 border-2 hover:border-slate-600"
             >
               {/* Token icon or solid-color bg + letter if not found */}
               {toToken.icon && toToken.icon.startsWith("data:image/") ?
@@ -637,7 +637,7 @@ export default function SwapPanel({
               value={calculatingToAmount ? "Loading..." : toAmount}
               onChange={handleToAmountChange}
               placeholder="0.0"
-              className="w-full bg-slate-900 rounded-lg py-1 pr-2 text-2xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none py-2"
+              className="w-full bg-slate-900 rounded-lg py-2 pr-2 text-xl text-white placeholder-slate-500 border-2 border-slate-700 text-right outline-none"
             />
           </div>
         </div>

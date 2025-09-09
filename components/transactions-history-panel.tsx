@@ -72,10 +72,10 @@ export default function TransactionsHistoryPanel({
   };
 
   return (
-    <div className="w-full min-h-[726px] bg-slate-900 rounded-lg p-6">
+    <div className="w-full min-h-[726px] bg-slate-900 rounded-lg py-6 px-4 sm:px-6">
       <div className={"flex justify-between mb-6 items-center"}>
         <div>
-          <h2 className="text-xl font-bold text-white py-2">Transaction History</h2>
+          <h2 className="text-xl font-bold text-white p-0 sm:py-2">Transaction History</h2>
           <span className="text-sm">{account ? account.accountId : "Not signed in"}</span>
         </div>
         <button

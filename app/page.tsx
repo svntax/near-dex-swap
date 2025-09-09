@@ -16,7 +16,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<number>(0);
 
   return (
-    <div className="font-sans flex flex-col items-center justify-items-center min-h-screen p-8 pb-16 gap-16 sm:p-16">
+    <div className="font-sans flex flex-col items-center justify-items-center min-h-screen p-8 pb-16 gap-8 sm:gap-16 sm:p-16">
       <main className="w-full grid grid-rows-[auto_auto_1fr] w-full max-w-[600px]">
         <h1 className="text-3xl text-center pb-4">NEAR DEX Swap</h1>
 
