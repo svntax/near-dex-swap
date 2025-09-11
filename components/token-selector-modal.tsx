@@ -37,6 +37,7 @@ export const TokenSelectorModal = ({
           name: tokenInfo.metadata.name,
           symbol: tokenInfo.metadata.symbol,
           price_usd: Number(tokenInfo.price_usd),
+          price_usd_hardcoded: Number(tokenInfo.price_usd_hardcoded),
           decimals: tokenInfo.metadata.decimals,
           icon: tokenInfo.metadata.icon
         }));
@@ -68,7 +69,9 @@ export const TokenSelectorModal = ({
           const nearPriceUsd: number = await priceResponse.json();
           const nearToken = initialTokensList.find((t: Token) => {return t.id === "near"});
           if (nearToken) {
-            initialTokensList[initialTokensList.indexOf(nearToken)].price_usd = nearPriceUsd;
+            const initialNearToken = initialTokensList[initialTokensList.indexOf(nearToken)];
+            initialNearToken.price_usd = nearPriceUsd;
+            initialNearToken.price_usd_hardcoded = nearPriceUsd;
           }
         }
         

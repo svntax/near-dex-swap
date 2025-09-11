@@ -3,6 +3,7 @@ interface Token {
   name: string;
   symbol: string;
   price_usd: number;
+  price_usd_hardcoded: number;
   decimals: number;
   icon: string;
 }
@@ -24,6 +25,7 @@ interface TokenMetadata {
 interface TokenInfo {
   account_id: string;
   price_usd: string;
+  price_usd_hardcoded: string;
   main_pool: string;
   metadata: TokenMetadata;
   reputation: TokenReputation;
